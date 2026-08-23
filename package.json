@@ -1,6 +1,6 @@
 {
   "name": "ow-tools-style-suite",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "description": "Comprehensive styling suite for Obsidian: floating formatting toolbar, passage typography, aesthetic highlights, custom fonts, and document appearance.",
   "main": "main.js",
   "scripts": {
