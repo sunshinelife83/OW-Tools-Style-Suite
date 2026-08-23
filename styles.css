@@ -1,0 +1,626 @@
+/* ═════════════════════════════════════════════════════════════════════════
+   OW-Tools: Style Suite — Ultra-Modern Clean & Glassmorphism UI
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── Global CSS Tokens & Variables ── */
+:root {
+  --rich-editor-glass-bg: rgba(var(--background-primary-rgb, 30, 30, 35), 0.88);
+  --rich-editor-glass-border: rgba(255, 255, 255, 0.14);
+  --rich-editor-glass-shadow: 0 12px 36px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  --rich-editor-transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  --rich-editor-highlight-radius: 6px;
+}
+
+.theme-light {
+  --rich-editor-glass-bg: rgba(255, 255, 255, 0.92);
+  --rich-editor-glass-border: rgba(0, 0, 0, 0.08);
+  --rich-editor-glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+}
+
+/* ── 1. Floating Selection Toolbar (Focused Glossy Glass Capsule) ── */
+.rich-editor-selection-toolbar {
+  position: absolute;
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 42%),
+    var(--rich-editor-glass-bg);
+  backdrop-filter: blur(22px) saturate(175%);
+  -webkit-backdrop-filter: blur(22px) saturate(175%);
+  border: 1px solid var(--rich-editor-glass-border);
+  border-radius: 14px;
+  box-shadow: var(--rich-editor-glass-shadow), 0 3px 12px rgba(0, 0, 0, 0.12);
+  z-index: var(--layer-popover, 100);
+  max-width: calc(100% - 16px);
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  white-space: nowrap;
+  animation: rich-editor-pop-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes rich-editor-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.rich-editor-selection-toolbar .rich-editor-selection-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--rich-editor-transition);
+}
+
+.rich-editor-selection-toolbar .rich-editor-selection-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
+  color: var(--text-normal);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 9px rgba(0, 0, 0, 0.14);
+}
+
+.rich-editor-selection-toolbar .rich-editor-selection-btn:active {
+  transform: scale(0.94);
+}
+
+.rich-editor-selection-toolbar .rich-editor-selection-btn.is-active,
+.rich-editor-view-action.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 9px;
+  box-shadow: 0 0 12px rgba(var(--interactive-accent-rgb, 100, 100, 255), 0.38);
+}
+
+.rich-editor-tb-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: linear-gradient(180deg, transparent, var(--background-modifier-border), transparent);
+}
+
+/* ── 2. Note Header Actions (Clean, Obsidian-Native Minimalist Icons) ── */
+.rich-editor-view-action {
+  position: relative;
+  border-radius: 6px;
+  transition: var(--rich-editor-transition);
+  color: var(--text-muted);
+}
+
+.rich-editor-view-action:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  transform: translateY(-1px);
+}
+
+.rich-editor-view-action.has-document-appearance:not(.is-active),
+.rich-editor-view-action-typography.has-passage-typography:not(.is-active) {
+  color: var(--interactive-accent);
+}
+
+.rich-editor-view-action-text-color::after,
+.rich-editor-view-action-highlight-color::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--background-primary);
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.rich-editor-view-action-text-color::after {
+  background: var(--rich-editor-active-text-color, #e11d48);
+}
+
+.rich-editor-view-action-highlight-color::after {
+  background: var(--rich-editor-active-highlight-color, #fef08a);
+}
+
+/* ── 3. Focused Color & Typography Popovers ── */
+.rich-editor-quick-popover {
+  position: fixed;
+  z-index: 10000;
+  width: min(292px, calc(100vw - 20px));
+  padding: 12px;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 45%),
+    var(--rich-editor-glass-bg);
+  backdrop-filter: blur(26px) saturate(190%);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  border: 1px solid var(--rich-editor-glass-border);
+  border-radius: 16px;
+  box-shadow: var(--rich-editor-glass-shadow), 0 18px 42px rgba(0, 0, 0, 0.24);
+  animation: rich-editor-pop-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rich-editor-quick-popover::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(110deg, rgba(255, 255, 255, 0.08), transparent 34%);
+}
+
+.rich-editor-color-popover-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 1px 2px 3px;
+}
+
+.rich-editor-color-popover-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 24%, var(--background-modifier-border));
+  border-radius: 9px;
+}
+
+.rich-editor-color-popover-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.rich-editor-color-popover-heading {
+  min-width: 0;
+}
+
+.rich-editor-color-popover-title {
+  color: var(--text-normal);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.rich-editor-color-popover-description {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rich-editor-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rich-editor-popover-tabs {
+  display: flex;
+  width: 100%;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.rich-editor-popover-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--rich-editor-transition);
+}
+
+.rich-editor-popover-tab.is-active {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.rich-editor-tab-icon {
+  display: flex;
+  align-items: center;
+}
+
+.rich-editor-tab-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.rich-editor-popover-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.rich-editor-popover-swatch {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s ease;
+}
+
+.rich-editor-popover-swatch:hover {
+  transform: scale(1.18);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  z-index: 2;
+}
+
+.rich-editor-popover-swatch.is-selected {
+  border: 2px solid var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--background-primary), 0 0 8px var(--interactive-accent);
+}
+
+.rich-editor-swatch-check {
+  font-size: 13px;
+  font-weight: bold;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rich-editor-swatch-check svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rich-editor-popover-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.rich-editor-popover-color-picker-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.rich-editor-popover-native-picker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.rich-editor-popover-picker-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.rich-editor-popover-picker-label svg {
+  width: 12px;
+  height: 12px;
+}
+
+.rich-editor-popover-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  font-size: 11px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--rich-editor-transition);
+}
+
+.rich-editor-popover-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.rich-editor-popover-btn-danger:hover {
+  background: rgba(225, 29, 72, 0.15);
+  color: #e11d48;
+  border-color: rgba(225, 29, 72, 0.3);
+}
+
+.rich-editor-popover-btn svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* Fonts tab inside Popover */
+.rich-editor-popover-font-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rich-editor-popover-font-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+}
+
+.rich-editor-popover-font-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  font-size: 11.5px;
+  font-weight: 500;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: var(--rich-editor-transition);
+}
+
+.rich-editor-popover-font-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+  transform: translateY(-1px);
+}
+
+.rich-editor-popover-size-row {
+  display: flex;
+  gap: 4px;
+}
+
+.rich-editor-popover-size-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  font-size: 11px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--rich-editor-transition);
+}
+
+.rich-editor-popover-size-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* ── 4. Modals & Previews (Appearance, Fonts) ── */
+.rich-editor-appearance-modal .setting-item-description,
+.rich-editor-passage-modal .setting-item-description,
+.rich-editor-color-modal .setting-item-description {
+  color: var(--text-muted);
+}
+
+.rich-editor-passage-preview,
+.rich-editor-color-preview,
+.rich-editor-glass-preview {
+  margin: 12px 0 16px;
+  padding: 18px;
+  overflow-wrap: anywhere;
+  background: var(--rich-editor-glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--rich-editor-glass-border);
+  border-radius: var(--radius-m, 8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) inset;
+  transition: var(--rich-editor-transition);
+}
+
+.rich-editor-color-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+  gap: 8px;
+  margin: 10px 0 18px;
+  max-width: 420px;
+}
+
+.rich-editor-color-swatch {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1.5px solid var(--background-modifier-border-hover);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s ease;
+}
+
+.rich-editor-color-swatch:hover {
+  transform: scale(1.18);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  z-index: 2;
+}
+
+.rich-editor-color-swatch.is-selected {
+  border: 2px solid var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--background-primary), 0 0 8px var(--interactive-accent);
+}
+
+.rich-editor-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+
+/* ── 5. Glossy Chips, Cards & Font Suggestion Items ── */
+.rich-editor-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 20px;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--rich-editor-transition);
+}
+
+.rich-editor-chip:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.rich-editor-chip.is-selected {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 10px rgba(var(--interactive-accent-rgb, 100, 100, 255), 0.4);
+}
+
+/* ── 6. Document & Inline Typography Rendering + Universal Font Synthesis ── */
+.rich-editor-document-surface {
+  --rich-editor-font-family: var(--font-text);
+}
+
+.rich-editor-document-surface,
+.rich-editor-document-surface .cm-content,
+.rich-editor-document-surface .cm-line,
+.rich-editor-document-surface .markdown-preview-view,
+.rich-editor-document-surface .markdown-rendered,
+.rich-editor-document-surface .markdown-source-view.mod-cm6 .cm-content {
+  font-family: var(--rich-editor-font-family, var(--font-text));
+  font-size: var(--rich-editor-font-size, inherit);
+  line-height: var(--rich-editor-line-height, inherit);
+  font-synthesis: weight style !important;
+  -webkit-font-synthesis: weight style !important;
+}
+
+.rich-editor-document-surface .cm-line,
+.rich-editor-document-surface .markdown-preview-view :is(p, li, blockquote, td, th),
+.rich-editor-document-surface .markdown-rendered :is(p, li, blockquote, td, th) {
+  text-align: var(--rich-editor-text-align, start);
+}
+
+.rich-editor-document-surface :is(
+  .cm-strong,
+  strong,
+  b,
+  .rich-editor-inline-bold,
+  .rich-editor-inline-styled-text b,
+  .rich-editor-inline-styled-text strong,
+  .cm-strong .rich-editor-inline-styled-text,
+  .rich-editor-inline-styled-text .cm-strong
+) {
+  font-weight: 700 !important;
+}
+
+.rich-editor-document-surface :is(
+  .cm-em,
+  em,
+  i,
+  .rich-editor-inline-italic,
+  .rich-editor-inline-styled-text i,
+  .rich-editor-inline-styled-text em,
+  .cm-em .rich-editor-inline-styled-text,
+  .rich-editor-inline-styled-text .cm-em
+) {
+  font-style: italic !important;
+}
+
+.rich-editor-inline-underline {
+  text-decoration-line: underline !important;
+}
+
+.rich-editor-inline-strikethrough {
+  text-decoration-line: line-through !important;
+}
+
+.rich-editor-document-surface .cm-line.rich-editor-rtl-line {
+  direction: rtl;
+}
+
+/* ── 7. Highlights (Smooth Rounding in all modes) ── */
+body.rich-editor-highlight-sharp,
+.rich-editor-highlight-sharp {
+  --rich-editor-highlight-radius: 0px !important;
+}
+
+body.rich-editor-highlight-smooth,
+.rich-editor-highlight-smooth,
+:root {
+  --rich-editor-highlight-radius: 6px !important;
+}
+
+.rich-editor-document-surface :is(
+  .rich-editor-inline-highlight,
+  mark,
+  span.cm-highlight,
+  span[data-rich-editor-style],
+  span[data-rich-editor-typography]
+) {
+  display: inline;
+  color: inherit;
+  padding: 0.14em 0.38em !important;
+  margin: 0 0.08em;
+  border-radius: var(--rich-editor-highlight-radius, 6px) !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  transition: background-color 0.15s ease;
+}

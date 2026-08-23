@@ -1,0 +1,20 @@
+# Node dependencies
+node_modules/
+package-lock.json
+
+# Build outputs (uncomment main.js if you don't commit it to git)
+# main.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment and IDE
+*.env
+*.log
+.vscode/
+.idea/
+.obsidian/
+
+# Generated site
+site/

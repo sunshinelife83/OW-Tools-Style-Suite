@@ -1,0 +1,34 @@
+{
+  "name": "ow-tools-style-suite",
+  "version": "1.2.0",
+  "description": "Comprehensive styling suite for Obsidian: floating formatting toolbar, passage typography, aesthetic highlights, custom fonts, and document appearance.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "deploy": "node scripts/deploy.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "markdown",
+    "style-suite",
+    "typography",
+    "highlights",
+    "fonts"
+  ],
+  "author": "sunshinelife83",
+  "license": "MIT",
+  "devDependencies": {
+    "@codemirror/state": "^6.5.0",
+    "@codemirror/view": "^6.38.6",
+    "@types/node": "^20.11.0",
+    "esbuild": "^0.21.5",
+    "jsdom": "^30.0.0",
+    "obsidian": "latest",
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.0"
+  }
+}
