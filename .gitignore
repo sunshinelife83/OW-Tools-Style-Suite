@@ -1,6 +1,5 @@
 # Node dependencies
 node_modules/
-package-lock.json
 
 # Build outputs (uncomment main.js if you don't commit it to git)
 # main.js
