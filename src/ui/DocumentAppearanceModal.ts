@@ -73,7 +73,9 @@ export class DocumentAppearanceModal extends Modal {
       .setName('Font size')
       .setDesc('Leave empty to use the plugin/default font size.')
       .addDropdown((dropdown) => {
-        FONT_SIZE_OPTIONS.forEach((value) => dropdown.addOption(value, value || 'Default'));
+        FONT_SIZE_OPTIONS.forEach((value) => {
+          dropdown.addOption(value, value || 'Default');
+        });
         dropdown.setValue(this.draft.fontSize).onChange((value) => {
           this.draft.fontSize = value;
         });
@@ -88,7 +90,9 @@ export class DocumentAppearanceModal extends Modal {
       .setName('Line height')
       .setDesc('Increase this for comfortable long-form reading.')
       .addDropdown((dropdown) => {
-        LINE_HEIGHT_OPTIONS.forEach((value) => dropdown.addOption(value, value || 'Default'));
+        LINE_HEIGHT_OPTIONS.forEach((value) => {
+          dropdown.addOption(value, value || 'Default');
+        });
         dropdown.setValue(this.draft.lineHeight).onChange((value) => {
           this.draft.lineHeight = value;
         });

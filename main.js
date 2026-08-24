@@ -2718,12 +2718,16 @@ var FontPickerModal = class extends import_obsidian3.FuzzySuggestModal {
   fontIndex = [];
   onOpen() {
     super.onOpen();
-    void this.fontService.getAvailableFonts().then((fonts) => {
+    void this.loadFonts();
+  }
+  async loadFonts() {
+    try {
+      const fonts = await this.fontService.getAvailableFonts();
       this.fontIndex = createFontSearchIndex(fonts);
       this.inputEl.dispatchEvent(new Event("input"));
-    }).catch(() => {
+    } catch {
       this.fontIndex = [];
-    });
+    }
   }
   getItems() {
     return searchFontCandidates(this.fontIndex, this.inputEl.value ?? "", MAX_FUZZY_CANDIDATES);
@@ -2784,7 +2788,9 @@ var DocumentAppearanceModal = class extends import_obsidian4.Modal {
       })
     );
     new import_obsidian4.Setting(contentEl).setName("Font size").setDesc("Leave empty to use the plugin/default font size.").addDropdown((dropdown) => {
-      FONT_SIZE_OPTIONS.forEach((value) => dropdown.addOption(value, value || "Default"));
+      FONT_SIZE_OPTIONS.forEach((value) => {
+        dropdown.addOption(value, value || "Default");
+      });
       dropdown.setValue(this.draft.fontSize).onChange((value) => {
         this.draft.fontSize = value;
       });
@@ -2794,7 +2800,9 @@ var DocumentAppearanceModal = class extends import_obsidian4.Modal {
       })
     );
     new import_obsidian4.Setting(contentEl).setName("Line height").setDesc("Increase this for comfortable long-form reading.").addDropdown((dropdown) => {
-      LINE_HEIGHT_OPTIONS.forEach((value) => dropdown.addOption(value, value || "Default"));
+      LINE_HEIGHT_OPTIONS.forEach((value) => {
+        dropdown.addOption(value, value || "Default");
+      });
       dropdown.setValue(this.draft.lineHeight).onChange((value) => {
         this.draft.lineHeight = value;
       });
@@ -3895,12 +3903,7 @@ var RichEditorSettingsTab = class extends import_obsidian9.PluginSettingTab {
     });
   }
   refreshSettings() {
-    const modernTab = this;
-    if (typeof modernTab.update === "function") {
-      modernTab.update();
-    } else {
-      this.display();
-    }
+    this.display();
   }
 };
 var RICH_EDITOR_SETTING_KEYS = [

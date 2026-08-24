@@ -312,12 +312,9 @@ export class RichEditorSettingsTab extends PluginSettingTab {
   }
 
   private refreshSettings(): void {
-    const modernTab = this as PluginSettingTab & { update?: () => void };
-    if (typeof modernTab.update === 'function') {
-      modernTab.update();
-    } else {
-      this.display();
-    }
+    // `display()` is the compatibility path for Obsidian versions before
+    // 1.13. Declarative settings are rebuilt when the settings view opens.
+    this.display();
   }
 }
 
