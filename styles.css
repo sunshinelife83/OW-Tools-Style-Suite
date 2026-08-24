@@ -40,6 +40,10 @@
   animation: rich-editor-pop-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.rich-editor-selection-toolbar.is-visible {
+  display: flex;
+}
+
 @keyframes rich-editor-pop-in {
   0% {
     opacity: 0;
@@ -465,6 +469,11 @@
   transition: var(--rich-editor-transition);
 }
 
+.rich-editor-color-preview.has-background-color {
+  padding: 0.2em 0.4em;
+  border-radius: var(--radius-s, 4px);
+}
+
 .rich-editor-color-presets {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
@@ -495,6 +504,10 @@
 .rich-editor-color-swatch.is-selected {
   border: 2px solid var(--interactive-accent);
   box-shadow: 0 0 0 2px var(--background-primary), 0 0 8px var(--interactive-accent);
+}
+
+.rich-editor-color-swatch.is-soft:not(.is-selected) {
+  border: 1px solid var(--interactive-accent);
 }
 
 .rich-editor-preset-row {
@@ -539,17 +552,17 @@
   --rich-editor-font-family: var(--font-text);
 }
 
-.rich-editor-document-surface,
-.rich-editor-document-surface .cm-content,
-.rich-editor-document-surface .cm-line,
-.rich-editor-document-surface .markdown-preview-view,
-.rich-editor-document-surface .markdown-rendered,
-.rich-editor-document-surface .markdown-source-view.mod-cm6 .cm-content {
+body .rich-editor-document-surface,
+body .rich-editor-document-surface .cm-content,
+body .rich-editor-document-surface .cm-line,
+body .rich-editor-document-surface .markdown-preview-view,
+body .rich-editor-document-surface .markdown-rendered,
+body .rich-editor-document-surface .markdown-source-view.mod-cm6 .cm-content {
   font-family: var(--rich-editor-font-family, var(--font-text));
   font-size: var(--rich-editor-font-size, inherit);
   line-height: var(--rich-editor-line-height, inherit);
-  font-synthesis: weight style !important;
-  -webkit-font-synthesis: weight style !important;
+  font-synthesis: weight style;
+  -webkit-font-synthesis: weight style;
 }
 
 .rich-editor-document-surface .cm-line,
@@ -558,7 +571,7 @@
   text-align: var(--rich-editor-text-align, start);
 }
 
-.rich-editor-document-surface :is(
+body .rich-editor-document-surface :is(
   .cm-strong,
   strong,
   b,
@@ -568,10 +581,10 @@
   .cm-strong .rich-editor-inline-styled-text,
   .rich-editor-inline-styled-text .cm-strong
 ) {
-  font-weight: 700 !important;
+  font-weight: 700;
 }
 
-.rich-editor-document-surface :is(
+body .rich-editor-document-surface :is(
   .cm-em,
   em,
   i,
@@ -581,15 +594,15 @@
   .cm-em .rich-editor-inline-styled-text,
   .rich-editor-inline-styled-text .cm-em
 ) {
-  font-style: italic !important;
+  font-style: italic;
 }
 
-.rich-editor-inline-underline {
-  text-decoration-line: underline !important;
+.rich-editor-document-surface .rich-editor-inline-underline {
+  text-decoration-line: underline;
 }
 
-.rich-editor-inline-strikethrough {
-  text-decoration-line: line-through !important;
+.rich-editor-document-surface .rich-editor-inline-strikethrough {
+  text-decoration-line: line-through;
 }
 
 .rich-editor-document-surface .cm-line.rich-editor-rtl-line {
@@ -599,16 +612,19 @@
 /* ── 7. Highlights (Smooth Rounding in all modes) ── */
 body.rich-editor-highlight-sharp,
 .rich-editor-highlight-sharp {
-  --rich-editor-highlight-radius: 0px !important;
+  --rich-editor-highlight-radius: 0px;
+}
+
+:root {
+  --rich-editor-highlight-radius: 6px;
 }
 
 body.rich-editor-highlight-smooth,
-.rich-editor-highlight-smooth,
-:root {
-  --rich-editor-highlight-radius: 6px !important;
+.rich-editor-highlight-smooth {
+  --rich-editor-highlight-radius: 6px;
 }
 
-.rich-editor-document-surface :is(
+body .rich-editor-document-surface :is(
   .rich-editor-inline-highlight,
   mark,
   span.cm-highlight,
@@ -617,10 +633,10 @@ body.rich-editor-highlight-smooth,
 ) {
   display: inline;
   color: inherit;
-  padding: 0.14em 0.38em !important;
+  padding: 0.14em 0.38em;
   margin: 0 0.08em;
-  border-radius: var(--rich-editor-highlight-radius, 6px) !important;
-  box-decoration-break: clone !important;
-  -webkit-box-decoration-break: clone !important;
+  border-radius: var(--rich-editor-highlight-radius, 6px);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
   transition: background-color 0.15s ease;
 }

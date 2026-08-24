@@ -286,7 +286,7 @@ function applyDocumentAppearanceToElement(element, appearance) {
 }
 function setCssVariable(element, name, value) {
   if (value) {
-    element.style.setProperty(name, value);
+    element.setCssProps({ [name]: value });
   } else {
     element.style.removeProperty(name);
   }
@@ -501,7 +501,7 @@ var InlineStyleDecorationValue = class {
     this.view = view;
     this.deps = deps;
     this.decorations = this.buildDecorations();
-    window.addEventListener(INLINE_STYLE_VISIBILITY_EVENT, this.handleVisibilityChange);
+    this.ownerWindow.addEventListener(INLINE_STYLE_VISIBILITY_EVENT, this.handleVisibilityChange);
     this.scheduleLegacyDirectionCleanup();
   }
   decorations;
@@ -514,21 +514,21 @@ var InlineStyleDecorationValue = class {
         const boundaries = computeTagBoundariesFromDoc(update.state.doc);
         const emptyTags = boundaries.filter((b) => b.openEnd === b.close);
         if (emptyTags.length > 0) {
-          Promise.resolve().then(() => {
+          void Promise.resolve().then(() => {
             const currentBoundaries = computeTagBoundariesFromDoc(this.view.state.doc);
             const currentEmpty = currentBoundaries.filter((b) => b.openEnd === b.close);
             if (currentEmpty.length > 0) {
               const changes = currentEmpty.map((b) => ({ from: b.open, to: b.closeEnd }));
               this.view.dispatch({ changes, userEvent: "delete.emptyTag" });
             }
-          });
+          }).catch(() => void 0);
         }
       }
     }
   }
   destroy() {
     this.destroyed = true;
-    window.removeEventListener(INLINE_STYLE_VISIBILITY_EVENT, this.handleVisibilityChange);
+    this.ownerWindow.removeEventListener(INLINE_STYLE_VISIBILITY_EVENT, this.handleVisibilityChange);
   }
   /**
    * One-time migration for notes written by the old source-anchor engine.
@@ -538,7 +538,7 @@ var InlineStyleDecorationValue = class {
   scheduleLegacyDirectionCleanup() {
     if (this.legacyCleanupScheduled) return;
     this.legacyCleanupScheduled = true;
-    Promise.resolve().then(() => {
+    void Promise.resolve().then(() => {
       if (this.destroyed) return;
       const changes = [];
       for (let lineNumber = 1; lineNumber <= this.view.state.doc.lines; lineNumber += 1) {
@@ -551,7 +551,10 @@ var InlineStyleDecorationValue = class {
       if (changes.length > 0) {
         this.view.dispatch({ changes, userEvent: "input" });
       }
-    });
+    }).catch(() => void 0);
+  }
+  get ownerWindow() {
+    return this.view.dom.ownerDocument.defaultView ?? window;
   }
   handleVisibilityChange = () => {
     this.decorations = this.buildDecorations();
@@ -914,7 +917,6 @@ var SelectionToolbarValue = class {
     this.view = view;
     this.deps = deps;
     this.toolbarEl = this.buildToolbar();
-    this.view.dom.appendChild(this.toolbarEl);
   }
   toolbarEl;
   scheduled = false;
@@ -930,7 +932,7 @@ var SelectionToolbarValue = class {
   schedulePosition() {
     if (this.scheduled) return;
     this.scheduled = true;
-    requestAnimationFrame(() => {
+    this.ownerWindow.requestAnimationFrame(() => {
       this.scheduled = false;
       this.position();
     });
@@ -947,23 +949,23 @@ var SelectionToolbarValue = class {
       return;
     }
     const editorRect = this.view.dom.getBoundingClientRect();
-    this.toolbarEl.style.display = "flex";
+    this.toolbarEl.addClass("is-visible");
     const toolbarRect = this.toolbarEl.getBoundingClientRect();
     let left = head.left - editorRect.left;
     let top = head.top - editorRect.top - toolbarRect.height - 8;
     left = Math.max(8, Math.min(left, editorRect.width - toolbarRect.width - 8));
     if (top < 4) top = head.bottom - editorRect.top + 8;
-    this.toolbarEl.style.left = `${left}px`;
-    this.toolbarEl.style.top = `${top}px`;
+    this.toolbarEl.setCssProps({
+      left: `${left}px`,
+      top: `${top}px`
+    });
     this.updateActiveStates();
   }
   hide() {
-    this.toolbarEl.style.display = "none";
+    this.toolbarEl.removeClass("is-visible");
   }
   buildToolbar() {
-    const toolbar = document.createElement("div");
-    toolbar.className = "rich-editor-selection-toolbar";
-    toolbar.style.display = "none";
+    const toolbar = this.view.dom.createDiv({ cls: "rich-editor-selection-toolbar" });
     toolbar.addEventListener("mousedown", (event) => {
       event.preventDefault();
     });
@@ -979,6 +981,9 @@ var SelectionToolbarValue = class {
     this.divider(toolbar);
     this.addIconButton(toolbar, "eraser", "Clear formatting", () => this.withEditor((editor) => this.deps.controller.clearFormatting(editor)));
     return toolbar;
+  }
+  get ownerWindow() {
+    return this.view.dom.ownerDocument.defaultView ?? window;
   }
   addIconButton(parent, icon, label, onClick, stateId) {
     const button = parent.createEl("button", {
@@ -1647,10 +1652,11 @@ var FormattingController = class {
   }
   async setDocumentAppearance(file, updates) {
     await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-      this.writeFrontmatterValue(frontmatter, DOCUMENT_FONT_KEY, updates, "fontFamily");
-      this.writeFrontmatterValue(frontmatter, DOCUMENT_FONT_SIZE_KEY, updates, "fontSize");
-      this.writeFrontmatterValue(frontmatter, DOCUMENT_LINE_HEIGHT_KEY, updates, "lineHeight");
-      this.writeFrontmatterValue(frontmatter, DOCUMENT_ALIGNMENT_KEY, updates, "alignment");
+      const frontmatterRecord = frontmatter !== null && typeof frontmatter === "object" ? frontmatter : {};
+      this.writeFrontmatterValue(frontmatterRecord, DOCUMENT_FONT_KEY, updates, "fontFamily");
+      this.writeFrontmatterValue(frontmatterRecord, DOCUMENT_FONT_SIZE_KEY, updates, "fontSize");
+      this.writeFrontmatterValue(frontmatterRecord, DOCUMENT_LINE_HEIGHT_KEY, updates, "lineHeight");
+      this.writeFrontmatterValue(frontmatterRecord, DOCUMENT_ALIGNMENT_KEY, updates, "alignment");
     });
   }
   writeFrontmatterValue(frontmatter, key, updates, property) {
@@ -2714,8 +2720,9 @@ var FontPickerModal = class extends import_obsidian3.FuzzySuggestModal {
     super.onOpen();
     void this.fontService.getAvailableFonts().then((fonts) => {
       this.fontIndex = createFontSearchIndex(fonts);
-      this.updateSuggestions?.();
       this.inputEl.dispatchEvent(new Event("input"));
+    }).catch(() => {
+      this.fontIndex = [];
     });
   }
   getItems() {
@@ -2728,7 +2735,7 @@ var FontPickerModal = class extends import_obsidian3.FuzzySuggestModal {
     super.renderSuggestion(match, el);
     el.addClass("rich-editor-font-suggestion");
     if (!match.item.startsWith("var(")) {
-      el.style.fontFamily = `"${match.item}", var(--font-text)`;
+      el.setCssStyles({ fontFamily: `"${match.item}", var(--font-text)` });
     }
   }
   onChooseItem(font) {
@@ -2818,25 +2825,37 @@ var DocumentAppearanceModal = class extends import_obsidian4.Modal {
       alignment: ""
     });
     new import_obsidian4.Setting(contentEl).addButton(
-      (button) => button.setButtonText("Clear document appearance").setWarning().onClick(async () => {
-        await this.options.onApply({
-          fontFamily: "",
-          fontSize: "",
-          lineHeight: "",
-          alignment: void 0
-        });
-        this.close();
+      (button) => button.setButtonText("Clear document appearance").setClass("mod-warning").onClick(() => {
+        void this.clearAppearance();
       })
     ).addButton(
       (button) => button.setButtonText("Cancel").onClick(() => {
         this.close();
       })
     ).addButton(
-      (button) => button.setButtonText("Apply").setCta().onClick(async () => {
-        await this.options.onApply(this.toUpdate());
-        this.close();
+      (button) => button.setButtonText("Apply").setCta().onClick(() => {
+        void this.applyAppearance();
       })
     );
+  }
+  async clearAppearance() {
+    try {
+      await this.options.onApply({
+        fontFamily: "",
+        fontSize: "",
+        lineHeight: "",
+        alignment: void 0
+      });
+      this.close();
+    } catch {
+    }
+  }
+  async applyAppearance() {
+    try {
+      await this.options.onApply(this.toUpdate());
+      this.close();
+    } catch {
+    }
   }
   addPresetButton(parent, label, preset) {
     const button = parent.createEl("button", { text: label, cls: "mod-cta" });
@@ -2897,8 +2916,10 @@ var PassageAppearanceModal = class extends import_obsidian5.Modal {
     });
     const preview = contentEl.createDiv({ cls: "rich-editor-passage-preview rich-editor-glass-preview" });
     preview.setText("Selected passage preview \u2014 \u0628\u0633\u0645 \u0627\u0644\u0644\u0647 \u0627\u0644\u0631\u062D\u0645\u0646 \u0627\u0644\u0631\u062D\u064A\u0645 \u2014 The quick brown fox jumps");
-    if (this.fontFamily) preview.style.fontFamily = `"${this.fontFamily}", var(--font-text)`;
-    if (this.fontSize) preview.style.fontSize = this.fontSize;
+    preview.setCssStyles({
+      fontFamily: this.fontFamily ? `"${this.fontFamily}", var(--font-text)` : "",
+      fontSize: this.fontSize
+    });
     contentEl.createEl("h4", { text: "Popular Typefaces (Arabic & English)" });
     const fontChips = contentEl.createDiv({ cls: "rich-editor-preset-row" });
     for (const item of POPULAR_FONTS) {
@@ -2907,7 +2928,7 @@ var PassageAppearanceModal = class extends import_obsidian5.Modal {
         cls: `rich-editor-chip ${isSelected ? "is-selected" : ""}`,
         text: item.name
       });
-      chip.style.fontFamily = `"${item.font}", var(--font-text)`;
+      chip.setCssStyles({ fontFamily: `"${item.font}", var(--font-text)` });
       chip.addEventListener("click", () => {
         this.fontFamily = item.font;
         this.render();
@@ -2942,8 +2963,7 @@ var PassageAppearanceModal = class extends import_obsidian5.Modal {
     new import_obsidian5.Setting(contentEl).setName("Custom size").setDesc("Enter any CSS size such as 18px, 1.25em, or 130%").addText(
       (text) => text.setPlaceholder("Example: 18px").setValue(this.fontSize).onChange((value) => {
         this.fontSize = value.trim();
-        if (this.fontSize) preview.style.fontSize = this.fontSize;
-        else preview.style.removeProperty("font-size");
+        preview.setCssStyles({ fontSize: this.fontSize });
       })
     ).addButton(
       (button) => button.setButtonText("Reset size").setIcon("rotate-ccw").onClick(() => {
@@ -2952,26 +2972,40 @@ var PassageAppearanceModal = class extends import_obsidian5.Modal {
       })
     );
     new import_obsidian5.Setting(contentEl).addButton(
-      (button) => button.setWarning().setButtonText("Clear typography").onClick(async () => {
-        await this.options.onApply({ fontFamily: "", fontSize: "" });
-        this.close();
+      (button) => button.setClass("mod-warning").setButtonText("Clear typography").onClick(() => {
+        void this.clearTypography();
       })
     ).addButton((button) => button.setButtonText("Cancel").onClick(() => this.close())).addButton(
-      (button) => button.setCta().setButtonText("Apply").onClick(async () => {
-        const fontFamily = this.fontFamily.trim();
-        const fontSize = this.fontSize.trim();
-        if (fontFamily && !normalizeFontFamily(fontFamily)) {
-          new import_obsidian5.Notice("That font family cannot be stored safely.");
-          return;
-        }
-        if (fontSize && !normalizeFontSize(fontSize)) {
-          new import_obsidian5.Notice("Use a font size such as 18px, 1.2em, or 120%.");
-          return;
-        }
-        await this.options.onApply({ fontFamily, fontSize });
-        this.close();
+      (button) => button.setCta().setButtonText("Apply").onClick(() => {
+        void this.applyTypography();
       })
     );
+  }
+  async clearTypography() {
+    try {
+      await this.options.onApply({ fontFamily: "", fontSize: "" });
+      this.close();
+    } catch {
+      new import_obsidian5.Notice("OW-Tools: could not clear the passage typography.");
+    }
+  }
+  async applyTypography() {
+    const fontFamily = this.fontFamily.trim();
+    const fontSize = this.fontSize.trim();
+    if (fontFamily && !normalizeFontFamily(fontFamily)) {
+      new import_obsidian5.Notice("That font family cannot be stored safely.");
+      return;
+    }
+    if (fontSize && !normalizeFontSize(fontSize)) {
+      new import_obsidian5.Notice("Use a font size such as 18px, 1.2em, or 120%.");
+      return;
+    }
+    try {
+      await this.options.onApply({ fontFamily, fontSize });
+      this.close();
+    } catch {
+      new import_obsidian5.Notice("OW-Tools: could not apply the passage typography.");
+    }
   }
 };
 
@@ -3016,12 +3050,14 @@ var QuickColorPopover = class {
   outsideClickTimer = null;
   open() {
     this.close();
-    const popover = this.options.anchorEl.ownerDocument.createElement("div");
-    popover.className = "rich-editor-quick-popover rich-editor-color-popover rich-editor-glass-panel";
-    popover.setAttribute("role", "dialog");
-    popover.setAttribute("aria-label", this.isText ? "Text color palette" : "Highlight color palette");
+    const popover = this.options.anchorEl.ownerDocument.body.createDiv({
+      cls: "rich-editor-quick-popover rich-editor-color-popover rich-editor-glass-panel",
+      attr: {
+        role: "dialog",
+        "aria-label": this.isText ? "Text color palette" : "Highlight color palette"
+      }
+    });
     this.popoverEl = popover;
-    this.options.anchorEl.ownerDocument.body.appendChild(popover);
     this.render();
     this.position();
     this.outsideClickListener = (event) => {
@@ -3101,7 +3137,7 @@ var QuickColorPopover = class {
           title: item.name
         }
       });
-      swatch.style.backgroundColor = item.color;
+      swatch.setCssStyles({ backgroundColor: item.color });
       if (isSelected) {
         const checkIcon = swatch.createSpan({ cls: "rich-editor-swatch-check" });
         (0, import_obsidian6.setIcon)(checkIcon, "check");
@@ -3151,8 +3187,10 @@ var QuickColorPopover = class {
     if (top + popoverRect.height > this.ownerWindow.innerHeight - padding) {
       top = Math.max(padding, anchorRect.top - popoverRect.height - 8);
     }
-    this.popoverEl.style.left = `${Math.round(left)}px`;
-    this.popoverEl.style.top = `${Math.round(top)}px`;
+    this.popoverEl.setCssProps({
+      left: `${Math.round(left)}px`,
+      top: `${Math.round(top)}px`
+    });
   }
   async setDefault(color) {
     if (this.isText) {
@@ -3216,12 +3254,13 @@ var QuickTypographyPopover = class {
   tab;
   outsideClickListener = null;
   keydownListener = null;
+  outsideClickTimer = null;
   open() {
     this.close();
-    const popover = document.createElement("div");
-    popover.className = "rich-editor-quick-popover rich-editor-glass-panel";
+    const popover = this.options.anchorEl.ownerDocument.body.createDiv({
+      cls: "rich-editor-quick-popover rich-editor-glass-panel"
+    });
     this.popoverEl = popover;
-    document.body.appendChild(popover);
     this.render();
     this.position();
     this.outsideClickListener = (event) => {
@@ -3231,25 +3270,30 @@ var QuickTypographyPopover = class {
         this.close();
       }
     };
-    setTimeout(() => {
+    this.outsideClickTimer = this.ownerWindow.setTimeout(() => {
       if (this.outsideClickListener) {
-        window.addEventListener("mousedown", this.outsideClickListener);
+        this.ownerWindow.addEventListener("mousedown", this.outsideClickListener);
       }
+      this.outsideClickTimer = null;
     }, 10);
     this.keydownListener = (event) => {
       if (event.key === "Escape") {
         this.close();
       }
     };
-    window.addEventListener("keydown", this.keydownListener);
+    this.ownerWindow.addEventListener("keydown", this.keydownListener);
   }
   close() {
+    if (this.outsideClickTimer !== null) {
+      this.ownerWindow.clearTimeout(this.outsideClickTimer);
+      this.outsideClickTimer = null;
+    }
     if (this.outsideClickListener) {
-      window.removeEventListener("mousedown", this.outsideClickListener);
+      this.ownerWindow.removeEventListener("mousedown", this.outsideClickListener);
       this.outsideClickListener = null;
     }
     if (this.keydownListener) {
-      window.removeEventListener("keydown", this.keydownListener);
+      this.ownerWindow.removeEventListener("keydown", this.keydownListener);
       this.keydownListener = null;
     }
     if (this.popoverEl) {
@@ -3294,7 +3338,7 @@ var QuickTypographyPopover = class {
           cls: `rich-editor-popover-font-btn ${isSelected ? "is-selected" : ""}`,
           text: item.name
         });
-        btn.style.fontFamily = `"${item.font}", var(--font-text)`;
+        btn.setCssStyles({ fontFamily: `"${item.font}", var(--font-text)` });
         btn.addEventListener("click", () => {
           this.applyFont(item.font);
         });
@@ -3365,14 +3409,19 @@ var QuickTypographyPopover = class {
     let left = anchorRect.left + anchorRect.width / 2 - popoverRect.width / 2;
     let top = anchorRect.bottom + 6;
     if (left < padding) left = padding;
-    if (left + popoverRect.width > window.innerWidth - padding) {
-      left = window.innerWidth - popoverRect.width - padding;
+    if (left + popoverRect.width > this.ownerWindow.innerWidth - padding) {
+      left = this.ownerWindow.innerWidth - popoverRect.width - padding;
     }
-    if (top + popoverRect.height > window.innerHeight - padding) {
+    if (top + popoverRect.height > this.ownerWindow.innerHeight - padding) {
       top = anchorRect.top - popoverRect.height - 6;
     }
-    this.popoverEl.style.left = `${Math.round(left)}px`;
-    this.popoverEl.style.top = `${Math.round(top)}px`;
+    this.popoverEl.setCssProps({
+      left: `${Math.round(left)}px`,
+      top: `${Math.round(top)}px`
+    });
+  }
+  get ownerWindow() {
+    return this.options.anchorEl.ownerDocument.defaultView ?? window;
   }
   applyFont(fontFamily) {
     this.options.controller.setInlineTypography(this.options.editor, { fontFamily }, this.options.selection);
@@ -3450,14 +3499,13 @@ var TextColorModal = class extends import_obsidian8.Modal {
     });
     const preview = contentEl.createDiv({ cls: "rich-editor-color-preview" });
     preview.setText("Selected text preview \u2014 \u0645\u0639\u0627\u064A\u0646\u0629 \u0627\u0644\u0646\u0635 \u0627\u0644\u062C\u0645\u064A\u0644");
-    if (this.options.appearance.fontFamily) preview.style.fontFamily = this.options.appearance.fontFamily;
-    if (this.options.appearance.fontSize) preview.style.fontSize = this.options.appearance.fontSize;
-    if (this.textColor) preview.style.color = this.textColor;
-    if (this.backgroundColor) {
-      preview.style.backgroundColor = this.backgroundColor;
-      preview.style.padding = "0.2em 0.4em";
-      preview.style.borderRadius = "var(--radius-s, 4px)";
-    }
+    const previewStyles = {};
+    if (this.options.appearance.fontFamily) previewStyles.fontFamily = this.options.appearance.fontFamily;
+    if (this.options.appearance.fontSize) previewStyles.fontSize = this.options.appearance.fontSize;
+    if (this.textColor) previewStyles.color = this.textColor;
+    if (this.backgroundColor) previewStyles.backgroundColor = this.backgroundColor;
+    preview.setCssStyles(previewStyles);
+    preview.toggleClass("has-background-color", Boolean(this.backgroundColor));
     new import_obsidian8.Setting(contentEl).setName("Color target").setDesc("Switch between customizing the text color and the highlight background.").addDropdown(
       (dropdown) => dropdown.addOption("text", "Text color").addOption("background", "Highlight background").setValue(this.mode).onChange((value) => {
         this.mode = value;
@@ -3483,14 +3531,8 @@ var TextColorModal = class extends import_obsidian8.Modal {
     );
     if (currentColor && this.options.onSetDefaultQuickColor) {
       colorSetting.addButton(
-        (button) => button.setButtonText("Set as 1-click default").setTooltip("Use this as the default color for note-header quick buttons").onClick(async () => {
-          const valid = normalizeColor(currentColor);
-          if (!valid) {
-            new import_obsidian8.Notice("Please select a valid hexadecimal color first.");
-            return;
-          }
-          await this.options.onSetDefaultQuickColor?.(this.mode, valid);
-          new import_obsidian8.Notice(`Rich Editor: set default ${isText ? "text" : "highlight"} color to ${valid}`);
+        (button) => button.setButtonText("Set as 1-click default").setTooltip("Use this as the default color for note-header quick buttons").onClick(() => {
+          void this.setDefaultQuickColor(currentColor, isText ? "text" : "background");
         })
       );
     }
@@ -3504,32 +3546,57 @@ var TextColorModal = class extends import_obsidian8.Modal {
         cls: "rich-editor-color-swatch",
         attr: { "aria-label": preset.name, title: `${preset.name} (${preset.color})` }
       });
-      button.style.backgroundColor = preset.color;
-      if (preset.color.endsWith("66") || preset.color.endsWith("88")) {
-        button.style.border = "1px solid var(--interactive-accent)";
-      }
+      button.setCssStyles({ backgroundColor: preset.color });
+      button.toggleClass("is-soft", preset.color.endsWith("66") || preset.color.endsWith("88"));
       button.addEventListener("click", () => {
         this.setCurrentColor(preset.color);
         this.render();
       });
     }
     new import_obsidian8.Setting(contentEl).addButton(
-      (button) => button.setWarning().setButtonText("Clear custom colors").onClick(async () => {
-        await this.options.onApply({ textColor: "", backgroundColor: "" });
-        this.close();
+      (button) => button.setClass("mod-warning").setButtonText("Clear custom colors").onClick(() => {
+        void this.clearColors();
       })
     ).addButton((button) => button.setButtonText("Cancel").onClick(() => this.close())).addButton(
-      (button) => button.setCta().setButtonText("Apply").onClick(async () => {
-        const textColor = this.textColor.trim();
-        const backgroundColor = this.backgroundColor.trim();
-        if (textColor && !normalizeColor(textColor) || backgroundColor && !normalizeColor(backgroundColor)) {
-          new import_obsidian8.Notice("Use a valid hexadecimal color such as #3b82f6 or #fef08a.");
-          return;
-        }
-        await this.options.onApply({ textColor, backgroundColor });
-        this.close();
+      (button) => button.setCta().setButtonText("Apply").onClick(() => {
+        void this.applyColors();
       })
     );
+  }
+  async setDefaultQuickColor(color, type) {
+    const valid = normalizeColor(color);
+    if (!valid) {
+      new import_obsidian8.Notice("Please select a valid hexadecimal color first.");
+      return;
+    }
+    try {
+      await this.options.onSetDefaultQuickColor?.(type, valid);
+      new import_obsidian8.Notice(`Rich Editor: set default ${type === "text" ? "text" : "highlight"} color to ${valid}`);
+    } catch {
+      new import_obsidian8.Notice("Rich Editor: could not save the default color.");
+    }
+  }
+  async clearColors() {
+    try {
+      await this.options.onApply({ textColor: "", backgroundColor: "" });
+      this.close();
+    } catch {
+      new import_obsidian8.Notice("Rich Editor: could not clear the colors.");
+    }
+  }
+  async applyColors() {
+    const textColor = this.textColor.trim();
+    const backgroundColor = this.backgroundColor.trim();
+    if (textColor && !normalizeColor(textColor) || backgroundColor && !normalizeColor(backgroundColor)) {
+      new import_obsidian8.Notice("Use a valid hexadecimal color such as #3b82f6 or #fef08a.");
+      return;
+    }
+    try {
+      await this.options.onApply({ textColor, backgroundColor });
+      this.close();
+    } catch {
+      new import_obsidian8.Notice("Rich Editor: could not apply the colors.");
+    }
   }
   setCurrentColor(value) {
     if (this.mode === "text") this.textColor = value;
@@ -3603,72 +3670,84 @@ var RichEditorSettingsTab = class extends import_obsidian9.PluginSettingTab {
     const { containerEl } = this;
     const settings = this.settingsService.getSettings();
     containerEl.empty();
-    containerEl.createEl("h2", { text: "OW-Tools: Style Suite" });
+    new import_obsidian9.Setting(containerEl).setName("OW-Tools Style Suite").setHeading();
     containerEl.createEl("p", {
       text: "A comprehensive styling and typography suite for Obsidian notes with aesthetic highlights, custom fonts, floating toolbar, and document appearance."
     });
     new import_obsidian9.Setting(containerEl).setName("Selection toolbar").setDesc("Show a small floating toolbar when text is selected in the editor.").addToggle(
-      (toggle) => toggle.setValue(settings.enableSelectionToolbar).onChange(async (value) => {
-        await this.settingsService.updateSettings({ enableSelectionToolbar: value });
+      (toggle) => toggle.setValue(settings.enableSelectionToolbar).onChange((value) => {
+        this.persistSettings({ enableSelectionToolbar: value });
       })
     );
     new import_obsidian9.Setting(containerEl).setName("Hide passage style markup").setDesc("Hide style markup (<mark> tags) in Live Preview while seamlessly displaying the visual result.").addToggle(
-      (toggle) => toggle.setValue(settings.hideInlineStyleMarkup).onChange(async (value) => {
-        await this.settingsService.updateSettings({ hideInlineStyleMarkup: value });
+      (toggle) => toggle.setValue(settings.hideInlineStyleMarkup).onChange((value) => {
+        this.persistSettings({ hideInlineStyleMarkup: value });
       })
     );
     new import_obsidian9.Setting(containerEl).setName("Document action buttons").setDesc("Show the document appearance button in each Markdown note header.").addToggle(
-      (toggle) => toggle.setValue(settings.showDocumentActions).onChange(async (value) => {
-        await this.settingsService.updateSettings({ showDocumentActions: value });
+      (toggle) => toggle.setValue(settings.showDocumentActions).onChange((value) => {
+        this.persistSettings({ showDocumentActions: value });
       })
     );
     new import_obsidian9.Setting(containerEl).setName("Quick color header buttons").setDesc("Show 1-click text color and highlight buttons in each note header.").addToggle(
-      (toggle) => toggle.setValue(settings.showColorHeaderActions).onChange(async (value) => {
-        await this.settingsService.updateSettings({ showColorHeaderActions: value });
+      (toggle) => toggle.setValue(settings.showColorHeaderActions).onChange((value) => {
+        this.persistSettings({ showColorHeaderActions: value });
       })
     );
     new import_obsidian9.Setting(containerEl).setName("Highlight style and mode").setDesc("Choose your highlight behavior: smooth pastel highlight, sharp modern highlight, or Obsidian classic Markdown (==text==).").addDropdown(
-      (dropdown) => dropdown.addOption("rich-smooth", "Style Suite \u2014 Smooth (Rounded corners, padded) [Default]").addOption("rich-sharp", "Style Suite \u2014 Sharp (Square edges)").addOption("classic-markdown", "Classic Markdown (==highlight==)").setValue(settings.highlightMode || "rich-smooth").onChange(async (value) => {
-        await this.settingsService.updateSettings({ highlightMode: value });
+      (dropdown) => dropdown.addOption("rich-smooth", "Style Suite \u2014 Smooth (Rounded corners, padded) [Default]").addOption("rich-sharp", "Style Suite \u2014 Sharp (Square edges)").addOption("classic-markdown", "Classic Markdown (==highlight==)").setValue(settings.highlightMode || "rich-smooth").onChange((value) => {
+        this.persistSettings({ highlightMode: value });
       })
     );
     new import_obsidian9.Setting(containerEl).setName("Quick text color").setDesc("Color applied by the 1-click text color button.").addColorPicker(
-      (color) => color.setValue(settings.activeTextColor || "#e11d48").onChange(async (value) => {
-        await this.settingsService.updateSettings({ activeTextColor: value });
+      (color) => color.setValue(settings.activeTextColor || "#e11d48").onChange((value) => {
+        this.persistSettings({ activeTextColor: value });
       })
     );
     new import_obsidian9.Setting(containerEl).setName("Quick highlight color").setDesc("Color applied by the 1-click custom highlight button.").addColorPicker(
-      (color) => color.setValue(settings.activeHighlightColor || "#fef08a").onChange(async (value) => {
-        await this.settingsService.updateSettings({ activeHighlightColor: value });
+      (color) => color.setValue(settings.activeHighlightColor || "#fef08a").onChange((value) => {
+        this.persistSettings({ activeHighlightColor: value });
       })
     );
-    containerEl.createEl("h3", { text: "Default document appearance" });
+    new import_obsidian9.Setting(containerEl).setName("Default document appearance").setHeading();
     new import_obsidian9.Setting(containerEl).setName("Default font").setDesc("Fallback font for notes that do not define their own document font.").addText(
-      (text) => text.setPlaceholder("Example: Amiri").setValue(settings.defaultDocumentFont).onChange(async (value) => {
-        await this.settingsService.updateSettings({ defaultDocumentFont: value.trim() });
+      (text) => text.setPlaceholder("Example: Amiri").setValue(settings.defaultDocumentFont).onChange((value) => {
+        this.persistSettings({ defaultDocumentFont: value.trim() });
       })
     );
     new import_obsidian9.Setting(containerEl).setName("Default font size").setDesc("Fallback font size, such as 16px or 1.05em. Leave empty to use Obsidian theme size.").addText(
-      (text) => text.setPlaceholder("Example: 17px").setValue(settings.defaultDocumentFontSize).onChange(async (value) => {
-        await this.settingsService.updateSettings({ defaultDocumentFontSize: value.trim() });
+      (text) => text.setPlaceholder("Example: 17px").setValue(settings.defaultDocumentFontSize).onChange((value) => {
+        this.persistSettings({ defaultDocumentFontSize: value.trim() });
       })
     );
     new import_obsidian9.Setting(containerEl).setName("Default line height").setDesc("Comfortable spacing for long-form notes. Leave empty to use the theme default.").addText(
-      (text) => text.setPlaceholder("Example: 1.6").setValue(settings.defaultDocumentLineHeight).onChange(async (value) => {
-        await this.settingsService.updateSettings({ defaultDocumentLineHeight: value.trim() });
+      (text) => text.setPlaceholder("Example: 1.6").setValue(settings.defaultDocumentLineHeight).onChange((value) => {
+        this.persistSettings({ defaultDocumentLineHeight: value.trim() });
       })
     );
     new import_obsidian9.Setting(containerEl).setName("Default alignment").setDesc("Fallback paragraph alignment for notes without a document-specific value.").addDropdown(
-      (dropdown) => dropdown.addOption("", "Theme/default").addOption("left", "Left").addOption("center", "Center").addOption("right", "Right").addOption("justify", "Justify").setValue(settings.defaultDocumentAlignment).onChange(async (value) => {
-        await this.settingsService.updateSettings({ defaultDocumentAlignment: value });
+      (dropdown) => dropdown.addOption("", "Theme/default").addOption("left", "Left").addOption("center", "Center").addOption("right", "Right").addOption("justify", "Justify").setValue(settings.defaultDocumentAlignment).onChange((value) => {
+        this.persistSettings({ defaultDocumentAlignment: value });
       })
     );
     new import_obsidian9.Setting(containerEl).setName("Reset settings").setDesc("Restore the plugin settings to their defaults.").addButton(
-      (button) => button.setWarning().setButtonText("Reset").onClick(async () => {
-        await this.settingsService.resetToDefaults();
-        this.display();
+      (button) => button.setClass("mod-warning").setButtonText("Reset").onClick(() => {
+        void this.resetSettings();
       })
     );
+  }
+  async resetSettings() {
+    try {
+      await this.settingsService.resetToDefaults();
+      this.display();
+    } catch {
+      new import_obsidian9.Notice("OW-Tools: could not reset the settings.");
+    }
+  }
+  persistSettings(updates) {
+    void this.settingsService.updateSettings(updates).catch(() => {
+      new import_obsidian9.Notice("OW-Tools: could not save that setting.");
+    });
   }
 };
 
@@ -3712,14 +3791,13 @@ var RichEditorPlugin = class extends import_obsidian10.Plugin {
         const b = mark.getAttribute("b");
         const f = mark.getAttribute("f");
         const s = mark.getAttribute("s");
-        if (c) mark.style.color = c;
-        if (b) {
-          mark.style.backgroundColor = b;
-        } else {
-          mark.style.backgroundColor = "transparent";
-        }
-        if (f) mark.style.fontFamily = f;
-        if (s) mark.style.fontSize = s;
+        const styles = {
+          backgroundColor: b ?? "transparent"
+        };
+        if (c) styles.color = c;
+        if (f) styles.fontFamily = f;
+        if (s) styles.fontSize = s;
+        mark.setCssStyles(styles);
       });
     });
     this.registerEvent(
@@ -3826,12 +3904,19 @@ var RichEditorPlugin = class extends import_obsidian10.Plugin {
   chooseFontForView(view) {
     const file = this.formattingController.requireFile(this.getViewFile(view));
     if (!file) return;
-    openDocumentFontPicker(this.app, this.fontService, async (font) => {
+    openDocumentFontPicker(this.app, this.fontService, (font) => {
+      void this.applyDocumentFontSelection(file, font, view);
+    });
+  }
+  async applyDocumentFontSelection(file, font, view) {
+    try {
       await this.formattingController.setDocumentFont(file, font);
       this.refreshDocumentAppearance();
       this.formattingController.restoreEditorFocus(view.editor);
       new import_obsidian10.Notice(`OW-Tools: document font set to ${font}.`);
-    });
+    } catch {
+      new import_obsidian10.Notice("OW-Tools: could not save the document font.");
+    }
   }
   openPassageAppearance(editor) {
     const current = this.formattingController.getSelectionRange(editor);
@@ -4036,7 +4121,9 @@ var RichEditorPlugin = class extends import_obsidian10.Plugin {
     const settings = this.settingsService.getSettings();
     document.body.classList.toggle("rich-editor-highlight-sharp", settings.highlightMode === "rich-sharp");
     document.body.classList.toggle("rich-editor-highlight-smooth", settings.highlightMode !== "rich-sharp");
-    document.body.style.setProperty("--rich-editor-highlight-radius", settings.highlightMode === "rich-sharp" ? "0px" : "4px");
+    document.body.setCssProps({
+      "--rich-editor-highlight-radius": settings.highlightMode === "rich-sharp" ? "0px" : "4px"
+    });
     this.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
       if (!(view instanceof import_obsidian10.MarkdownView)) return;
@@ -4045,7 +4132,9 @@ var RichEditorPlugin = class extends import_obsidian10.Plugin {
       view.containerEl.querySelector(".rich-editor-view-action-typography")?.classList.toggle("has-passage-typography", !!(passageTypography.fontFamily || passageTypography.fontSize));
       const textColorBtn = view.containerEl.querySelector(".rich-editor-view-action-text-color");
       if (textColorBtn) {
-        textColorBtn.style.setProperty("--rich-editor-active-text-color", settings.activeTextColor || "#e11d48");
+        textColorBtn.setCssProps({
+          "--rich-editor-active-text-color": settings.activeTextColor || "#e11d48"
+        });
         textColorBtn.setAttribute(
           "aria-label",
           `Text color palette (${settings.activeTextColor || "#e11d48"})
@@ -4054,7 +4143,9 @@ Click to choose a color, right-click for advanced settings`
       }
       const highlightBtn = view.containerEl.querySelector(".rich-editor-view-action-highlight-color");
       if (highlightBtn) {
-        highlightBtn.style.setProperty("--rich-editor-active-highlight-color", settings.activeHighlightColor || "#fef08a");
+        highlightBtn.setCssProps({
+          "--rich-editor-active-highlight-color": settings.activeHighlightColor || "#fef08a"
+        });
         highlightBtn.setAttribute(
           "aria-label",
           `Highlight palette (${settings.activeHighlightColor || "#fef08a"})

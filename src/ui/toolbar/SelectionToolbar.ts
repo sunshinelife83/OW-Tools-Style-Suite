@@ -21,7 +21,6 @@ class SelectionToolbarValue implements PluginValue {
 
   constructor(private view: EditorView, private deps: SelectionToolbarDeps) {
     this.toolbarEl = this.buildToolbar();
-    this.view.dom.appendChild(this.toolbarEl);
   }
 
   public update(update: ViewUpdate): void {
@@ -37,7 +36,7 @@ class SelectionToolbarValue implements PluginValue {
   private schedulePosition(): void {
     if (this.scheduled) return;
     this.scheduled = true;
-    requestAnimationFrame(() => {
+    this.ownerWindow.requestAnimationFrame(() => {
       this.scheduled = false;
       this.position();
     });
@@ -57,7 +56,7 @@ class SelectionToolbarValue implements PluginValue {
     }
 
     const editorRect = this.view.dom.getBoundingClientRect();
-    this.toolbarEl.style.display = 'flex';
+    this.toolbarEl.addClass('is-visible');
     const toolbarRect = this.toolbarEl.getBoundingClientRect();
 
     let left = head.left - editorRect.left;
@@ -65,19 +64,19 @@ class SelectionToolbarValue implements PluginValue {
     left = Math.max(8, Math.min(left, editorRect.width - toolbarRect.width - 8));
     if (top < 4) top = head.bottom - editorRect.top + 8;
 
-    this.toolbarEl.style.left = `${left}px`;
-    this.toolbarEl.style.top = `${top}px`;
+    this.toolbarEl.setCssProps({
+      left: `${left}px`,
+      top: `${top}px`,
+    });
     this.updateActiveStates();
   }
 
   private hide(): void {
-    this.toolbarEl.style.display = 'none';
+    this.toolbarEl.removeClass('is-visible');
   }
 
   private buildToolbar(): HTMLElement {
-    const toolbar = document.createElement('div');
-    toolbar.className = 'rich-editor-selection-toolbar';
-    toolbar.style.display = 'none';
+    const toolbar = this.view.dom.createDiv({ cls: 'rich-editor-selection-toolbar' });
 
     toolbar.addEventListener('mousedown', (event) => {
       event.preventDefault();
@@ -97,6 +96,10 @@ class SelectionToolbarValue implements PluginValue {
     this.addIconButton(toolbar, 'eraser', 'Clear formatting', () => this.withEditor((editor) => this.deps.controller.clearFormatting(editor)));
 
     return toolbar;
+  }
+
+  private get ownerWindow(): Window {
+    return this.view.dom.ownerDocument.defaultView ?? window;
   }
 
   private addIconButton(

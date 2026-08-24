@@ -44,6 +44,7 @@ export class QuickTypographyPopover {
   private tab: 'font' | 'size';
   private outsideClickListener: ((e: MouseEvent) => void) | null = null;
   private keydownListener: ((e: KeyboardEvent) => void) | null = null;
+  private outsideClickTimer: number | null = null;
 
   constructor(private options: QuickTypographyPopoverOptions) {
     this.tab = options.initialTab ?? 'font';
@@ -52,10 +53,10 @@ export class QuickTypographyPopover {
   public open(): void {
     this.close();
 
-    const popover = document.createElement('div');
-    popover.className = 'rich-editor-quick-popover rich-editor-glass-panel';
+    const popover = this.options.anchorEl.ownerDocument.body.createDiv({
+      cls: 'rich-editor-quick-popover rich-editor-glass-panel',
+    });
     this.popoverEl = popover;
-    document.body.appendChild(popover);
 
     this.render();
     this.position();
@@ -67,10 +68,11 @@ export class QuickTypographyPopover {
         this.close();
       }
     };
-    setTimeout(() => {
+    this.outsideClickTimer = this.ownerWindow.setTimeout(() => {
       if (this.outsideClickListener) {
-        window.addEventListener('mousedown', this.outsideClickListener);
+        this.ownerWindow.addEventListener('mousedown', this.outsideClickListener);
       }
+      this.outsideClickTimer = null;
     }, 10);
 
     this.keydownListener = (event: KeyboardEvent) => {
@@ -78,16 +80,20 @@ export class QuickTypographyPopover {
         this.close();
       }
     };
-    window.addEventListener('keydown', this.keydownListener);
+    this.ownerWindow.addEventListener('keydown', this.keydownListener);
   }
 
   public close(): void {
+    if (this.outsideClickTimer !== null) {
+      this.ownerWindow.clearTimeout(this.outsideClickTimer);
+      this.outsideClickTimer = null;
+    }
     if (this.outsideClickListener) {
-      window.removeEventListener('mousedown', this.outsideClickListener);
+      this.ownerWindow.removeEventListener('mousedown', this.outsideClickListener);
       this.outsideClickListener = null;
     }
     if (this.keydownListener) {
-      window.removeEventListener('keydown', this.keydownListener);
+      this.ownerWindow.removeEventListener('keydown', this.keydownListener);
       this.keydownListener = null;
     }
     if (this.popoverEl) {
@@ -140,7 +146,7 @@ export class QuickTypographyPopover {
           cls: `rich-editor-popover-font-btn ${isSelected ? 'is-selected' : ''}`,
           text: item.name,
         });
-        btn.style.fontFamily = `"${item.font}", var(--font-text)`;
+        btn.setCssStyles({ fontFamily: `"${item.font}", var(--font-text)` });
         btn.addEventListener('click', () => {
           this.applyFont(item.font);
         });
@@ -221,15 +227,21 @@ export class QuickTypographyPopover {
     let top = anchorRect.bottom + 6;
 
     if (left < padding) left = padding;
-    if (left + popoverRect.width > window.innerWidth - padding) {
-      left = window.innerWidth - popoverRect.width - padding;
+    if (left + popoverRect.width > this.ownerWindow.innerWidth - padding) {
+      left = this.ownerWindow.innerWidth - popoverRect.width - padding;
     }
-    if (top + popoverRect.height > window.innerHeight - padding) {
+    if (top + popoverRect.height > this.ownerWindow.innerHeight - padding) {
       top = anchorRect.top - popoverRect.height - 6;
     }
 
-    this.popoverEl.style.left = `${Math.round(left)}px`;
-    this.popoverEl.style.top = `${Math.round(top)}px`;
+    this.popoverEl.setCssProps({
+      left: `${Math.round(left)}px`,
+      top: `${Math.round(top)}px`,
+    });
+  }
+
+  private get ownerWindow(): Window {
+    return this.options.anchorEl.ownerDocument.defaultView ?? window;
   }
 
   private applyFont(fontFamily: string): void {

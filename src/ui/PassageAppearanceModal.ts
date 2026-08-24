@@ -56,8 +56,10 @@ export class PassageAppearanceModal extends Modal {
 
     const preview = contentEl.createDiv({ cls: 'rich-editor-passage-preview rich-editor-glass-preview' });
     preview.setText('Selected passage preview — بسم الله الرحمن الرحيم — The quick brown fox jumps');
-    if (this.fontFamily) preview.style.fontFamily = `"${this.fontFamily}", var(--font-text)`;
-    if (this.fontSize) preview.style.fontSize = this.fontSize;
+    preview.setCssStyles({
+      fontFamily: this.fontFamily ? `"${this.fontFamily}", var(--font-text)` : '',
+      fontSize: this.fontSize,
+    });
 
     // ── Quick Font Presets ──
     contentEl.createEl('h4', { text: 'Popular Typefaces (Arabic & English)' });
@@ -68,7 +70,7 @@ export class PassageAppearanceModal extends Modal {
         cls: `rich-editor-chip ${isSelected ? 'is-selected' : ''}`,
         text: item.name,
       });
-      chip.style.fontFamily = `"${item.font}", var(--font-text)`;
+      chip.setCssStyles({ fontFamily: `"${item.font}", var(--font-text)` });
       chip.addEventListener('click', () => {
         this.fontFamily = item.font;
         this.render();
@@ -116,8 +118,7 @@ export class PassageAppearanceModal extends Modal {
       .addText((text) =>
         text.setPlaceholder('Example: 18px').setValue(this.fontSize).onChange((value) => {
           this.fontSize = value.trim();
-          if (this.fontSize) preview.style.fontSize = this.fontSize;
-          else preview.style.removeProperty('font-size');
+          preview.setCssStyles({ fontSize: this.fontSize });
         })
       )
       .addButton((button) =>
@@ -130,27 +131,44 @@ export class PassageAppearanceModal extends Modal {
     // ── Action Buttons ──
     new Setting(contentEl)
       .addButton((button) =>
-        button.setWarning().setButtonText('Clear typography').onClick(async () => {
-          await this.options.onApply({ fontFamily: '', fontSize: '' });
-          this.close();
+        button.setClass('mod-warning').setButtonText('Clear typography').onClick(() => {
+          void this.clearTypography();
         })
       )
       .addButton((button) => button.setButtonText('Cancel').onClick(() => this.close()))
       .addButton((button) =>
-        button.setCta().setButtonText('Apply').onClick(async () => {
-          const fontFamily = this.fontFamily.trim();
-          const fontSize = this.fontSize.trim();
-          if (fontFamily && !normalizeFontFamily(fontFamily)) {
-            new Notice('That font family cannot be stored safely.');
-            return;
-          }
-          if (fontSize && !normalizeFontSize(fontSize)) {
-            new Notice('Use a font size such as 18px, 1.2em, or 120%.');
-            return;
-          }
-          await this.options.onApply({ fontFamily, fontSize });
-          this.close();
+        button.setCta().setButtonText('Apply').onClick(() => {
+          void this.applyTypography();
         })
       );
+  }
+
+  private async clearTypography(): Promise<void> {
+    try {
+      await this.options.onApply({ fontFamily: '', fontSize: '' });
+      this.close();
+    } catch {
+      new Notice('OW-Tools: could not clear the passage typography.');
+    }
+  }
+
+  private async applyTypography(): Promise<void> {
+    const fontFamily = this.fontFamily.trim();
+    const fontSize = this.fontSize.trim();
+    if (fontFamily && !normalizeFontFamily(fontFamily)) {
+      new Notice('That font family cannot be stored safely.');
+      return;
+    }
+    if (fontSize && !normalizeFontSize(fontSize)) {
+      new Notice('Use a font size such as 18px, 1.2em, or 120%.');
+      return;
+    }
+
+    try {
+      await this.options.onApply({ fontFamily, fontSize });
+      this.close();
+    } catch {
+      new Notice('OW-Tools: could not apply the passage typography.');
+    }
   }
 }

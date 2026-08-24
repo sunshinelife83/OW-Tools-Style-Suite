@@ -1,6 +1,6 @@
-# OW-Tools: Style Suite
+# OW-Tools Style Suite
 
-> **Obsidian plugin — v1.0.0** · Requires Obsidian ≥ 1.4.0 · Works on desktop and mobile
+> **Obsidian plugin — v1.0.0** · Requires Obsidian ≥ 1.4.4 · Works on desktop and mobile
 
 A comprehensive inline-styling and typography suite for [Obsidian](https://obsidian.md).
 It adds a floating formatting toolbar, rich passage typography, aesthetic highlights, custom fonts,
@@ -65,7 +65,7 @@ never lands between two invisible characters.
 3. Enable the plugin in **Settings → Community plugins**.
 
 ### From the Community Plugin Browser *(when published)*
-Search for **OW-Tools: Style Suite** and click **Install**.
+Search for **OW-Tools Style Suite** and click **Install**.
 
 ---
 

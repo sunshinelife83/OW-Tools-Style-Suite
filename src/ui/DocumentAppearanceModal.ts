@@ -134,14 +134,8 @@ export class DocumentAppearanceModal extends Modal {
 
     new Setting(contentEl)
       .addButton((button) =>
-        button.setButtonText('Clear document appearance').setWarning().onClick(async () => {
-          await this.options.onApply({
-            fontFamily: '',
-            fontSize: '',
-            lineHeight: '',
-            alignment: undefined,
-          });
-          this.close();
+        button.setButtonText('Clear document appearance').setClass('mod-warning').onClick(() => {
+          void this.clearAppearance();
         })
       )
       .addButton((button) =>
@@ -150,11 +144,33 @@ export class DocumentAppearanceModal extends Modal {
         })
       )
       .addButton((button) =>
-        button.setButtonText('Apply').setCta().onClick(async () => {
-          await this.options.onApply(this.toUpdate());
-          this.close();
+        button.setButtonText('Apply').setCta().onClick(() => {
+          void this.applyAppearance();
         })
       );
+  }
+
+  private async clearAppearance(): Promise<void> {
+    try {
+      await this.options.onApply({
+        fontFamily: '',
+        fontSize: '',
+        lineHeight: '',
+        alignment: undefined,
+      });
+      this.close();
+    } catch {
+      // Keep the modal open so the user can retry when persistence fails.
+    }
+  }
+
+  private async applyAppearance(): Promise<void> {
+    try {
+      await this.options.onApply(this.toUpdate());
+      this.close();
+    } catch {
+      // Keep the modal open so the user can retry when persistence fails.
+    }
   }
 
   private addPresetButton(parent: HTMLElement, label: string, preset: DraftAppearance): void {
@@ -174,4 +190,3 @@ export class DocumentAppearanceModal extends Modal {
     };
   }
 }
-

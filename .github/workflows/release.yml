@@ -1,0 +1,89 @@
+name: Build and attest plugin release
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to rebuild and attest, for example 1.0.0'
+        required: true
+        type: string
+      source_ref:
+        description: 'Branch or commit to build for that release; use main for the current corrected source'
+        required: false
+        default: main
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref || inputs.tag || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Verify release metadata
+        run: |
+          test "$RELEASE_TAG" = "$(node -p "require('./manifest.json').version")"
+          node <<'NODE'
+          const manifest = require('./manifest.json');
+          if (manifest.name !== 'OW-Tools Style Suite') {
+            throw new Error(`Unexpected plugin name: ${manifest.name}`);
+          }
+          if (/\bobsidian\b/i.test(manifest.description)) {
+            throw new Error('The manifest description must not contain the app name.');
+          }
+          NODE
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          cp main.js manifest.json styles.css release/
+
+      - name: Attest release assets
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            release/main.js
+            release/manifest.json
+            release/styles.css
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" \
+              release/main.js release/manifest.json release/styles.css \
+              --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              release/main.js release/manifest.json release/styles.css \
+              --title "$RELEASE_TAG" --generate-notes
+          fi

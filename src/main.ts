@@ -76,14 +76,13 @@ export default class RichEditorPlugin extends Plugin {
         const b = mark.getAttribute('b');
         const f = mark.getAttribute('f');
         const s = mark.getAttribute('s');
-        if (c) mark.style.color = c;
-        if (b) {
-          mark.style.backgroundColor = b;
-        } else {
-          mark.style.backgroundColor = 'transparent';
-        }
-        if (f) mark.style.fontFamily = f;
-        if (s) mark.style.fontSize = s;
+        const styles: Partial<CSSStyleDeclaration> = {
+          backgroundColor: b ?? 'transparent',
+        };
+        if (c) styles.color = c;
+        if (f) styles.fontFamily = f;
+        if (s) styles.fontSize = s;
+        mark.setCssStyles(styles);
       });
     });
 
@@ -207,12 +206,20 @@ export default class RichEditorPlugin extends Plugin {
     const file = this.formattingController.requireFile(this.getViewFile(view));
     if (!file) return;
 
-    openDocumentFontPicker(this.app, this.fontService, async (font) => {
+    openDocumentFontPicker(this.app, this.fontService, (font) => {
+      void this.applyDocumentFontSelection(file, font, view);
+    });
+  }
+
+  private async applyDocumentFontSelection(file: TFile, font: string, view: MarkdownView): Promise<void> {
+    try {
       await this.formattingController.setDocumentFont(file, font);
       this.refreshDocumentAppearance();
       this.formattingController.restoreEditorFocus(view.editor);
       new Notice(`OW-Tools: document font set to ${font}.`);
-    });
+    } catch {
+      new Notice('OW-Tools: could not save the document font.');
+    }
   }
 
   public openPassageAppearance(editor: Editor): void {
@@ -455,7 +462,9 @@ export default class RichEditorPlugin extends Plugin {
     // Update global highlight corner style
     document.body.classList.toggle('rich-editor-highlight-sharp', settings.highlightMode === 'rich-sharp');
     document.body.classList.toggle('rich-editor-highlight-smooth', settings.highlightMode !== 'rich-sharp');
-    document.body.style.setProperty('--rich-editor-highlight-radius', settings.highlightMode === 'rich-sharp' ? '0px' : '4px');
+    document.body.setCssProps({
+      '--rich-editor-highlight-radius': settings.highlightMode === 'rich-sharp' ? '0px' : '4px',
+    });
 
     this.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
@@ -472,7 +481,9 @@ export default class RichEditorPlugin extends Plugin {
 
       const textColorBtn = view.containerEl.querySelector<HTMLElement>('.rich-editor-view-action-text-color');
       if (textColorBtn) {
-        textColorBtn.style.setProperty('--rich-editor-active-text-color', settings.activeTextColor || '#e11d48');
+        textColorBtn.setCssProps({
+          '--rich-editor-active-text-color': settings.activeTextColor || '#e11d48',
+        });
         textColorBtn.setAttribute(
           'aria-label',
           `Text color palette (${settings.activeTextColor || '#e11d48'})\nClick to choose a color, right-click for advanced settings`
@@ -481,7 +492,9 @@ export default class RichEditorPlugin extends Plugin {
 
       const highlightBtn = view.containerEl.querySelector<HTMLElement>('.rich-editor-view-action-highlight-color');
       if (highlightBtn) {
-        highlightBtn.style.setProperty('--rich-editor-active-highlight-color', settings.activeHighlightColor || '#fef08a');
+        highlightBtn.setCssProps({
+          '--rich-editor-active-highlight-color': settings.activeHighlightColor || '#fef08a',
+        });
         highlightBtn.setAttribute(
           'aria-label',
           `Highlight palette (${settings.activeHighlightColor || '#fef08a'})\nClick to choose a color, right-click for advanced settings`
@@ -537,7 +550,7 @@ export default class RichEditorPlugin extends Plugin {
     const file = this.getViewFile(view);
     if (!file) return {};
     const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter ?? null;
-    return readDocumentAppearanceFromFrontmatter(frontmatter as Record<string, unknown> | null);
+    return readDocumentAppearanceFromFrontmatter(frontmatter);
   }
 
   private hasExplicitAppearance(view: MarkdownView): boolean {

@@ -800,11 +800,14 @@ export class FormattingController {
 
 
   public async setDocumentAppearance(file: TFile, updates: Partial<DocumentAppearance>): Promise<void> {
-    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-      this.writeFrontmatterValue(frontmatter, DOCUMENT_FONT_KEY, updates, 'fontFamily');
-      this.writeFrontmatterValue(frontmatter, DOCUMENT_FONT_SIZE_KEY, updates, 'fontSize');
-      this.writeFrontmatterValue(frontmatter, DOCUMENT_LINE_HEIGHT_KEY, updates, 'lineHeight');
-      this.writeFrontmatterValue(frontmatter, DOCUMENT_ALIGNMENT_KEY, updates, 'alignment');
+    await this.app.fileManager.processFrontMatter(file, (frontmatter: unknown) => {
+      const frontmatterRecord = frontmatter !== null && typeof frontmatter === 'object'
+        ? frontmatter as Record<string, unknown>
+        : {};
+      this.writeFrontmatterValue(frontmatterRecord, DOCUMENT_FONT_KEY, updates, 'fontFamily');
+      this.writeFrontmatterValue(frontmatterRecord, DOCUMENT_FONT_SIZE_KEY, updates, 'fontSize');
+      this.writeFrontmatterValue(frontmatterRecord, DOCUMENT_LINE_HEIGHT_KEY, updates, 'lineHeight');
+      this.writeFrontmatterValue(frontmatterRecord, DOCUMENT_ALIGNMENT_KEY, updates, 'alignment');
     });
   }
 

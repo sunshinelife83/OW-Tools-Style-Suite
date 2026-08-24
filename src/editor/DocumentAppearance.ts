@@ -105,7 +105,7 @@ export function applyDocumentAppearanceToElement(element: HTMLElement, appearanc
 
 function setCssVariable(element: HTMLElement, name: string, value: string | undefined): void {
   if (value) {
-    element.style.setProperty(name, value);
+    element.setCssProps({ [name]: value });
   } else {
     element.style.removeProperty(name);
   }

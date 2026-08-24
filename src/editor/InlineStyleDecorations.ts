@@ -1,5 +1,5 @@
 import { Decoration, DecorationSet, EditorView, PluginValue, ViewPlugin, ViewUpdate, keymap } from '@codemirror/view';
-import { EditorSelection, EditorState, Prec } from '@codemirror/state';
+import { EditorSelection, EditorState, Prec, type Range, type Text } from '@codemirror/state';
 import {
   findAllInlineTypographyRegions,
   type InlineTypography,
@@ -56,7 +56,7 @@ class InlineStyleDecorationValue implements PluginValue {
 
   constructor(private view: EditorView, private deps: InlineStyleDecorationDeps) {
     this.decorations = this.buildDecorations();
-    window.addEventListener(INLINE_STYLE_VISIBILITY_EVENT, this.handleVisibilityChange);
+    this.ownerWindow.addEventListener(INLINE_STYLE_VISIBILITY_EVENT, this.handleVisibilityChange);
     this.scheduleLegacyDirectionCleanup();
   }
 
@@ -68,14 +68,14 @@ class InlineStyleDecorationValue implements PluginValue {
         const boundaries = computeTagBoundariesFromDoc(update.state.doc);
         const emptyTags = boundaries.filter((b) => b.openEnd === b.close);
         if (emptyTags.length > 0) {
-          Promise.resolve().then(() => {
+          void Promise.resolve().then(() => {
             const currentBoundaries = computeTagBoundariesFromDoc(this.view.state.doc);
             const currentEmpty = currentBoundaries.filter((b) => b.openEnd === b.close);
             if (currentEmpty.length > 0) {
               const changes = currentEmpty.map((b) => ({ from: b.open, to: b.closeEnd }));
               this.view.dispatch({ changes, userEvent: 'delete.emptyTag' });
             }
-          });
+          }).catch(() => undefined);
         }
       }
     }
@@ -83,7 +83,7 @@ class InlineStyleDecorationValue implements PluginValue {
 
   public destroy(): void {
     this.destroyed = true;
-    window.removeEventListener(INLINE_STYLE_VISIBILITY_EVENT, this.handleVisibilityChange);
+    this.ownerWindow.removeEventListener(INLINE_STYLE_VISIBILITY_EVENT, this.handleVisibilityChange);
   }
 
   /**
@@ -94,7 +94,7 @@ class InlineStyleDecorationValue implements PluginValue {
   private scheduleLegacyDirectionCleanup(): void {
     if (this.legacyCleanupScheduled) return;
     this.legacyCleanupScheduled = true;
-    Promise.resolve().then(() => {
+    void Promise.resolve().then(() => {
       if (this.destroyed) return;
 
       const changes: Array<{ from: number; to: number; insert: string }> = [];
@@ -109,7 +109,11 @@ class InlineStyleDecorationValue implements PluginValue {
       if (changes.length > 0) {
         this.view.dispatch({ changes, userEvent: 'input' });
       }
-    });
+    }).catch(() => undefined);
+  }
+
+  private get ownerWindow(): Window {
+    return this.view.dom.ownerDocument.defaultView ?? window;
   }
 
   private handleVisibilityChange = (): void => {
@@ -118,7 +122,7 @@ class InlineStyleDecorationValue implements PluginValue {
   };
 
   private buildDecorations(): DecorationSet {
-    const ranges: Array<any> = [];
+    const ranges: Array<Range<Decoration>> = [];
     const hideMarkup = this.deps.isMarkupHidden();
 
     for (let lineNumber = 1; lineNumber <= this.view.state.doc.lines; lineNumber += 1) {
@@ -236,7 +240,7 @@ function findSemanticMarkRanges(text: string): SemanticMarkRange[] {
   return ranges;
 }
 
-function computeHiddenMarkupRangesFromDoc(doc: any): HiddenMarkupRange[] {
+function computeHiddenMarkupRangesFromDoc(doc: Text): HiddenMarkupRange[] {
   const ranges: HiddenMarkupRange[] = [];
   for (let lineNumber = 1; lineNumber <= doc.lines; lineNumber += 1) {
     const line = doc.line(lineNumber);
@@ -300,7 +304,7 @@ function selectionOutsideHiddenMarkup(selection: EditorSelection, ranges: Hidden
   return changed ? EditorSelection.create(nextRanges, selection.mainIndex) : null;
 }
 
-function computeTagBoundariesFromDoc(doc: any): TagBoundary[] {
+function computeTagBoundariesFromDoc(doc: Text): TagBoundary[] {
   const boundaries: TagBoundary[] = [];
   for (let lineNumber = 1; lineNumber <= doc.lines; lineNumber++) {
     const line = doc.line(lineNumber);

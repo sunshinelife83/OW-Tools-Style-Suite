@@ -64,12 +64,14 @@ export class QuickColorPopover {
   public open(): void {
     this.close();
 
-    const popover = this.options.anchorEl.ownerDocument.createElement('div');
-    popover.className = 'rich-editor-quick-popover rich-editor-color-popover rich-editor-glass-panel';
-    popover.setAttribute('role', 'dialog');
-    popover.setAttribute('aria-label', this.isText ? 'Text color palette' : 'Highlight color palette');
+    const popover = this.options.anchorEl.ownerDocument.body.createDiv({
+      cls: 'rich-editor-quick-popover rich-editor-color-popover rich-editor-glass-panel',
+      attr: {
+        role: 'dialog',
+        'aria-label': this.isText ? 'Text color palette' : 'Highlight color palette',
+      },
+    });
     this.popoverEl = popover;
-    this.options.anchorEl.ownerDocument.body.appendChild(popover);
 
     this.render();
     this.position();
@@ -159,7 +161,7 @@ export class QuickColorPopover {
           title: item.name,
         },
       });
-      swatch.style.backgroundColor = item.color;
+      swatch.setCssStyles({ backgroundColor: item.color });
       if (isSelected) {
         const checkIcon = swatch.createSpan({ cls: 'rich-editor-swatch-check' });
         setIcon(checkIcon, 'check');
@@ -216,8 +218,10 @@ export class QuickColorPopover {
       top = Math.max(padding, anchorRect.top - popoverRect.height - 8);
     }
 
-    this.popoverEl.style.left = `${Math.round(left)}px`;
-    this.popoverEl.style.top = `${Math.round(top)}px`;
+    this.popoverEl.setCssProps({
+      left: `${Math.round(left)}px`,
+      top: `${Math.round(top)}px`,
+    });
   }
 
   private async setDefault(color: string): Promise<void> {

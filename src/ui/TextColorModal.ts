@@ -79,14 +79,13 @@ export class TextColorModal extends Modal {
 
     const preview = contentEl.createDiv({ cls: 'rich-editor-color-preview' });
     preview.setText('Selected text preview — معاينة النص الجميل');
-    if (this.options.appearance.fontFamily) preview.style.fontFamily = this.options.appearance.fontFamily;
-    if (this.options.appearance.fontSize) preview.style.fontSize = this.options.appearance.fontSize;
-    if (this.textColor) preview.style.color = this.textColor;
-    if (this.backgroundColor) {
-      preview.style.backgroundColor = this.backgroundColor;
-      preview.style.padding = '0.2em 0.4em';
-      preview.style.borderRadius = 'var(--radius-s, 4px)';
-    }
+    const previewStyles: Partial<CSSStyleDeclaration> = {};
+    if (this.options.appearance.fontFamily) previewStyles.fontFamily = this.options.appearance.fontFamily;
+    if (this.options.appearance.fontSize) previewStyles.fontSize = this.options.appearance.fontSize;
+    if (this.textColor) previewStyles.color = this.textColor;
+    if (this.backgroundColor) previewStyles.backgroundColor = this.backgroundColor;
+    preview.setCssStyles(previewStyles);
+    preview.toggleClass('has-background-color', Boolean(this.backgroundColor));
 
     new Setting(contentEl)
       .setName('Color target')
@@ -131,14 +130,8 @@ export class TextColorModal extends Modal {
         button
           .setButtonText('Set as 1-click default')
           .setTooltip('Use this as the default color for note-header quick buttons')
-          .onClick(async () => {
-            const valid = normalizeColor(currentColor);
-            if (!valid) {
-              new Notice('Please select a valid hexadecimal color first.');
-              return;
-            }
-            await this.options.onSetDefaultQuickColor?.(this.mode, valid);
-            new Notice(`Rich Editor: set default ${isText ? 'text' : 'highlight'} color to ${valid}`);
+          .onClick(() => {
+            void this.setDefaultQuickColor(currentColor, isText ? 'text' : 'background');
           })
       );
     }
@@ -155,10 +148,8 @@ export class TextColorModal extends Modal {
         cls: 'rich-editor-color-swatch',
         attr: { 'aria-label': preset.name, title: `${preset.name} (${preset.color})` },
       });
-      button.style.backgroundColor = preset.color;
-      if (preset.color.endsWith('66') || preset.color.endsWith('88')) {
-        button.style.border = '1px solid var(--interactive-accent)';
-      }
+      button.setCssStyles({ backgroundColor: preset.color });
+      button.toggleClass('is-soft', preset.color.endsWith('66') || preset.color.endsWith('88'));
       button.addEventListener('click', () => {
         this.setCurrentColor(preset.color);
         this.render();
@@ -167,24 +158,56 @@ export class TextColorModal extends Modal {
 
     new Setting(contentEl)
       .addButton((button) =>
-        button.setWarning().setButtonText('Clear custom colors').onClick(async () => {
-          await this.options.onApply({ textColor: '', backgroundColor: '' });
-          this.close();
+        button.setClass('mod-warning').setButtonText('Clear custom colors').onClick(() => {
+          void this.clearColors();
         })
       )
       .addButton((button) => button.setButtonText('Cancel').onClick(() => this.close()))
       .addButton((button) =>
-        button.setCta().setButtonText('Apply').onClick(async () => {
-          const textColor = this.textColor.trim();
-          const backgroundColor = this.backgroundColor.trim();
-          if ((textColor && !normalizeColor(textColor)) || (backgroundColor && !normalizeColor(backgroundColor))) {
-            new Notice('Use a valid hexadecimal color such as #3b82f6 or #fef08a.');
-            return;
-          }
-          await this.options.onApply({ textColor, backgroundColor });
-          this.close();
+        button.setCta().setButtonText('Apply').onClick(() => {
+          void this.applyColors();
         })
       );
+  }
+
+  private async setDefaultQuickColor(color: string, type: 'text' | 'background'): Promise<void> {
+    const valid = normalizeColor(color);
+    if (!valid) {
+      new Notice('Please select a valid hexadecimal color first.');
+      return;
+    }
+
+    try {
+      await this.options.onSetDefaultQuickColor?.(type, valid);
+      new Notice(`Rich Editor: set default ${type === 'text' ? 'text' : 'highlight'} color to ${valid}`);
+    } catch {
+      new Notice('Rich Editor: could not save the default color.');
+    }
+  }
+
+  private async clearColors(): Promise<void> {
+    try {
+      await this.options.onApply({ textColor: '', backgroundColor: '' });
+      this.close();
+    } catch {
+      new Notice('Rich Editor: could not clear the colors.');
+    }
+  }
+
+  private async applyColors(): Promise<void> {
+    const textColor = this.textColor.trim();
+    const backgroundColor = this.backgroundColor.trim();
+    if ((textColor && !normalizeColor(textColor)) || (backgroundColor && !normalizeColor(backgroundColor))) {
+      new Notice('Use a valid hexadecimal color such as #3b82f6 or #fef08a.');
+      return;
+    }
+
+    try {
+      await this.options.onApply({ textColor, backgroundColor });
+      this.close();
+    } catch {
+      new Notice('Rich Editor: could not apply the colors.');
+    }
   }
 
   private setCurrentColor(value: string): void {

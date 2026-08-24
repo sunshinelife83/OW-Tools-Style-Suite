@@ -81,8 +81,9 @@ export class FontPickerModal extends FuzzySuggestModal<string> {
     void this.fontService.getAvailableFonts().then((fonts) => {
       this.fontIndex = createFontSearchIndex(fonts);
       // Re-run the current query against a small prefiltered candidate list.
-      (this as unknown as { updateSuggestions?: () => void }).updateSuggestions?.();
       this.inputEl.dispatchEvent(new Event('input'));
+    }).catch(() => {
+      this.fontIndex = [];
     });
   }
 
@@ -99,7 +100,7 @@ export class FontPickerModal extends FuzzySuggestModal<string> {
     el.addClass('rich-editor-font-suggestion');
     // Live preview: render each entry in its own typeface
     if (!match.item.startsWith('var(')) {
-      el.style.fontFamily = `"${match.item}", var(--font-text)`;
+      el.setCssStyles({ fontFamily: `"${match.item}", var(--font-text)` });
     }
   }
 
@@ -107,4 +108,3 @@ export class FontPickerModal extends FuzzySuggestModal<string> {
     this.onPick(font);
   }
 }
-
