@@ -78,18 +78,16 @@ export class FontPickerModal extends FuzzySuggestModal<string> {
   public onOpen(): void {
     super.onOpen();
     // Font enumeration is async; refresh the suggestion list once loaded.
-    void this.loadFonts();
+    this.loadFonts().catch(() => {
+      this.fontIndex = [];
+    });
   }
 
   private async loadFonts(): Promise<void> {
-    try {
-      const fonts = await this.fontService.getAvailableFonts();
-      this.fontIndex = createFontSearchIndex(fonts);
-      // Re-run the current query against a small prefiltered candidate list.
-      this.inputEl.dispatchEvent(new Event('input'));
-    } catch {
-      this.fontIndex = [];
-    }
+    const fonts = await this.fontService.getAvailableFonts();
+    this.fontIndex = createFontSearchIndex(fonts);
+    // Re-run the current query against a small prefiltered candidate list.
+    this.inputEl.dispatchEvent(new Event('input'));
   }
 
   public getItems(): string[] {

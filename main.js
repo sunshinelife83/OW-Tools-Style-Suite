@@ -2725,16 +2725,14 @@ var FontPickerModal = class extends import_obsidian3.FuzzySuggestModal {
   fontIndex = [];
   onOpen() {
     super.onOpen();
-    void this.loadFonts();
+    this.loadFonts().catch(() => {
+      this.fontIndex = [];
+    });
   }
   async loadFonts() {
-    try {
-      const fonts = await this.fontService.getAvailableFonts();
-      this.fontIndex = createFontSearchIndex(fonts);
-      this.inputEl.dispatchEvent(new Event("input"));
-    } catch {
-      this.fontIndex = [];
-    }
+    const fonts = await this.fontService.getAvailableFonts();
+    this.fontIndex = createFontSearchIndex(fonts);
+    this.inputEl.dispatchEvent(new Event("input"));
   }
   getItems() {
     return searchFontCandidates(this.fontIndex, this.inputEl.value ?? "", MAX_FUZZY_CANDIDATES);
@@ -3899,7 +3897,7 @@ var RichEditorSettingsTab = class extends import_obsidian9.PluginSettingTab {
   async resetSettings() {
     try {
       await this.settingsService.resetToDefaults();
-      this.refreshSettings();
+      new import_obsidian9.Notice("OW-Tools: settings reset. Reopen this settings tab to see the defaults.");
     } catch {
       new import_obsidian9.Notice("OW-Tools: could not reset the settings.");
     }
@@ -3908,9 +3906,6 @@ var RichEditorSettingsTab = class extends import_obsidian9.PluginSettingTab {
     void this.settingsService.updateSettings(updates).catch(() => {
       new import_obsidian9.Notice("OW-Tools: could not save that setting.");
     });
-  }
-  refreshSettings() {
-    this.display();
   }
 };
 var RICH_EDITOR_SETTING_KEYS = [

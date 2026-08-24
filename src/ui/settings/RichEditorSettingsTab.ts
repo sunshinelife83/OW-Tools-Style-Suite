@@ -299,7 +299,7 @@ export class RichEditorSettingsTab extends PluginSettingTab {
   private async resetSettings(): Promise<void> {
     try {
       await this.settingsService.resetToDefaults();
-      this.refreshSettings();
+      new Notice('OW-Tools: settings reset. Reopen this settings tab to see the defaults.');
     } catch {
       new Notice('OW-Tools: could not reset the settings.');
     }
@@ -309,12 +309,6 @@ export class RichEditorSettingsTab extends PluginSettingTab {
     void this.settingsService.updateSettings(updates).catch(() => {
       new Notice('OW-Tools: could not save that setting.');
     });
-  }
-
-  private refreshSettings(): void {
-    // `display()` is the compatibility path for Obsidian versions before
-    // 1.13. Declarative settings are rebuilt when the settings view opens.
-    this.display();
   }
 }
 

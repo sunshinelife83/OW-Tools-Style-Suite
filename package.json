@@ -1,6 +1,6 @@
 {
   "name": "ow-tools-style-suite",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Comprehensive styling suite: floating formatting toolbar, passage typography, aesthetic highlights, custom fonts, and document appearance.",
   "main": "main.js",
   "scripts": {
