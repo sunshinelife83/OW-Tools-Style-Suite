@@ -599,10 +599,12 @@ body .rich-editor-document-surface :is(
 
 .rich-editor-document-surface .rich-editor-inline-underline {
   text-decoration-line: underline;
+  text-decoration-style: solid;
 }
 
 .rich-editor-document-surface .rich-editor-inline-strikethrough {
   text-decoration-line: line-through;
+  text-decoration-style: solid;
 }
 
 .rich-editor-document-surface .cm-line.rich-editor-rtl-line {
@@ -636,7 +638,7 @@ body .rich-editor-document-surface :is(
   padding: 0.14em 0.38em;
   margin: 0 0.08em;
   border-radius: var(--rich-editor-highlight-radius, 6px);
-  box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
   transition: background-color 0.15s ease;
 }

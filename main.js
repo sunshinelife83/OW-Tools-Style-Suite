@@ -573,7 +573,7 @@ var InlineStyleDecorationValue = class {
         if (openEnd < close) {
           let css = inlineTypographyToEditorCss(region.typography);
           if (isHighlight) {
-            css += "; vertical-align: baseline !important; line-height: inherit !important; border-radius: var(--rich-editor-highlight-radius, 6px); padding: 0.12em 0.42em; margin: 0 0.08em; box-decoration-break: clone; -webkit-box-decoration-break: clone;";
+            css += "; vertical-align: baseline !important; line-height: inherit !important; border-radius: var(--rich-editor-highlight-radius, 6px); padding: 0.12em 0.42em; margin: 0 0.08em; -webkit-box-decoration-break: clone; box-decoration-break: clone;";
           }
           ranges.push(
             import_view2.Decoration.mark({
@@ -3666,11 +3666,156 @@ var RichEditorSettingsTab = class extends import_obsidian9.PluginSettingTab {
     super(app, plugin);
     this.settingsService = settingsService;
   }
+  /**
+   * Obsidian 1.13+ uses this declarative path for settings rendering and
+   * search. Older Obsidian versions ignore it and use display() below.
+   */
+  getSettingDefinitions() {
+    return [
+      {
+        name: "Selection toolbar",
+        desc: "Show a small floating toolbar when text is selected in the editor.",
+        control: {
+          type: "toggle",
+          key: "enableSelectionToolbar",
+          defaultValue: true
+        }
+      },
+      {
+        name: "Hide passage style markup",
+        desc: "Hide style markup (<mark> tags) in Live Preview while seamlessly displaying the visual result.",
+        control: {
+          type: "toggle",
+          key: "hideInlineStyleMarkup",
+          defaultValue: true
+        }
+      },
+      {
+        name: "Document action buttons",
+        desc: "Show the document appearance button in each Markdown note header.",
+        control: {
+          type: "toggle",
+          key: "showDocumentActions",
+          defaultValue: true
+        }
+      },
+      {
+        name: "Quick color header buttons",
+        desc: "Show 1-click text color and highlight buttons in each note header.",
+        control: {
+          type: "toggle",
+          key: "showColorHeaderActions",
+          defaultValue: true
+        }
+      },
+      {
+        name: "Highlight style and mode",
+        desc: "Choose smooth pastel, sharp, or classic Markdown highlighting.",
+        control: {
+          type: "dropdown",
+          key: "highlightMode",
+          defaultValue: "rich-smooth",
+          options: {
+            "rich-smooth": "Style Suite \u2014 Smooth (Rounded corners, padded) [Default]",
+            "rich-sharp": "Style Suite \u2014 Sharp (Square edges)",
+            "classic-markdown": "Classic Markdown (==highlight==)"
+          }
+        }
+      },
+      {
+        name: "Quick text color",
+        desc: "Color applied by the 1-click text color button.",
+        control: {
+          type: "color",
+          key: "activeTextColor",
+          defaultValue: "#e11d48"
+        }
+      },
+      {
+        name: "Quick highlight color",
+        desc: "Color applied by the 1-click custom highlight button.",
+        control: {
+          type: "color",
+          key: "activeHighlightColor",
+          defaultValue: "#fef08a"
+        }
+      },
+      {
+        type: "group",
+        heading: "Default document appearance",
+        items: [
+          {
+            name: "Default font",
+            desc: "Fallback font for notes that do not define their own document font.",
+            control: {
+              type: "text",
+              key: "defaultDocumentFont",
+              defaultValue: "",
+              placeholder: "Example: Amiri"
+            }
+          },
+          {
+            name: "Default font size",
+            desc: "Fallback font size, such as 16px or 1.05em.",
+            control: {
+              type: "text",
+              key: "defaultDocumentFontSize",
+              defaultValue: "",
+              placeholder: "Example: 17px"
+            }
+          },
+          {
+            name: "Default line height",
+            desc: "Comfortable spacing for long-form notes.",
+            control: {
+              type: "text",
+              key: "defaultDocumentLineHeight",
+              defaultValue: "1.6",
+              placeholder: "Example: 1.6"
+            }
+          },
+          {
+            name: "Default alignment",
+            desc: "Fallback paragraph alignment for notes without a document-specific value.",
+            control: {
+              type: "dropdown",
+              key: "defaultDocumentAlignment",
+              defaultValue: "",
+              options: {
+                "": "Theme/default",
+                left: "Left",
+                center: "Center",
+                right: "Right",
+                justify: "Justify"
+              }
+            }
+          }
+        ]
+      },
+      {
+        name: "Reset settings",
+        desc: "Restore the plugin settings to their defaults.",
+        action: () => {
+          void this.resetSettings();
+        }
+      }
+    ];
+  }
+  getControlValue(key) {
+    if (!isRichEditorSettingKey(key)) return void 0;
+    return this.settingsService.getSettings()[key];
+  }
+  setControlValue(key, value) {
+    const updates = createSettingUpdate(key, value);
+    if (!updates) return;
+    return this.settingsService.updateSettings(updates).catch(() => {
+      new import_obsidian9.Notice("OW-Tools: could not save that setting.");
+    });
+  }
   display() {
     const { containerEl } = this;
     const settings = this.settingsService.getSettings();
     containerEl.empty();
-    new import_obsidian9.Setting(containerEl).setName("OW-Tools Style Suite").setHeading();
     containerEl.createEl("p", {
       text: "A comprehensive styling and typography suite for Obsidian notes with aesthetic highlights, custom fonts, floating toolbar, and document appearance."
     });
@@ -3739,7 +3884,7 @@ var RichEditorSettingsTab = class extends import_obsidian9.PluginSettingTab {
   async resetSettings() {
     try {
       await this.settingsService.resetToDefaults();
-      this.display();
+      this.refreshSettings();
     } catch {
       new import_obsidian9.Notice("OW-Tools: could not reset the settings.");
     }
@@ -3749,7 +3894,59 @@ var RichEditorSettingsTab = class extends import_obsidian9.PluginSettingTab {
       new import_obsidian9.Notice("OW-Tools: could not save that setting.");
     });
   }
+  refreshSettings() {
+    const modernTab = this;
+    if (typeof modernTab.update === "function") {
+      modernTab.update();
+    } else {
+      this.display();
+    }
+  }
 };
+var RICH_EDITOR_SETTING_KEYS = [
+  "enableSelectionToolbar",
+  "hideInlineStyleMarkup",
+  "showDocumentActions",
+  "showColorHeaderActions",
+  "activeTextColor",
+  "activeHighlightColor",
+  "highlightMode",
+  "defaultDocumentFont",
+  "defaultDocumentFontSize",
+  "defaultDocumentLineHeight",
+  "defaultDocumentAlignment"
+];
+function isRichEditorSettingKey(key) {
+  return RICH_EDITOR_SETTING_KEYS.includes(key);
+}
+function createSettingUpdate(key, value) {
+  switch (key) {
+    case "enableSelectionToolbar":
+      return typeof value === "boolean" ? { enableSelectionToolbar: value } : null;
+    case "hideInlineStyleMarkup":
+      return typeof value === "boolean" ? { hideInlineStyleMarkup: value } : null;
+    case "showDocumentActions":
+      return typeof value === "boolean" ? { showDocumentActions: value } : null;
+    case "showColorHeaderActions":
+      return typeof value === "boolean" ? { showColorHeaderActions: value } : null;
+    case "activeTextColor":
+      return typeof value === "string" ? { activeTextColor: value } : null;
+    case "activeHighlightColor":
+      return typeof value === "string" ? { activeHighlightColor: value } : null;
+    case "highlightMode":
+      return value === "rich-smooth" || value === "rich-sharp" || value === "classic-markdown" ? { highlightMode: value } : null;
+    case "defaultDocumentFont":
+      return typeof value === "string" ? { defaultDocumentFont: value } : null;
+    case "defaultDocumentFontSize":
+      return typeof value === "string" ? { defaultDocumentFontSize: value } : null;
+    case "defaultDocumentLineHeight":
+      return typeof value === "string" ? { defaultDocumentLineHeight: value } : null;
+    case "defaultDocumentAlignment":
+      return value === "" || value === "left" || value === "center" || value === "right" || value === "justify" ? { defaultDocumentAlignment: value } : null;
+    default:
+      return null;
+  }
+}
 
 // src/main.ts
 var RichEditorPlugin = class extends import_obsidian10.Plugin {

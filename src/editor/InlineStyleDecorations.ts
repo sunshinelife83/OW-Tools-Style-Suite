@@ -144,7 +144,7 @@ class InlineStyleDecorationValue implements PluginValue {
           if (isHighlight) {
             // Keep the highlight inline. An inline-block around an entire RTL
             // line becomes a bidi box and can change paragraph alignment.
-            css += '; vertical-align: baseline !important; line-height: inherit !important; border-radius: var(--rich-editor-highlight-radius, 6px); padding: 0.12em 0.42em; margin: 0 0.08em; box-decoration-break: clone; -webkit-box-decoration-break: clone;';
+            css += '; vertical-align: baseline !important; line-height: inherit !important; border-radius: var(--rich-editor-highlight-radius, 6px); padding: 0.12em 0.42em; margin: 0 0.08em; -webkit-box-decoration-break: clone; box-decoration-break: clone;';
           }
           ranges.push(
             Decoration.mark({
