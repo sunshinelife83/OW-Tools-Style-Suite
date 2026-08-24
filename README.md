@@ -1,6 +1,6 @@
 # OW-Tools Style Suite
 
-> **Obsidian plugin — v1.0.5** · Requires Obsidian ≥ 1.4.4 · Works on desktop and mobile
+> **Obsidian plugin — v1.0.6** · Requires Obsidian ≥ 1.4.4 · Works on desktop and mobile
 
 A comprehensive inline-styling and typography suite for [Obsidian](https://obsidian.md).
 It adds a floating formatting toolbar, rich passage typography, aesthetic highlights, custom fonts,

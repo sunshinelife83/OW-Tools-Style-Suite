@@ -2723,11 +2723,13 @@ var FontPickerModal = class extends import_obsidian3.FuzzySuggestModal {
     this.limit = MAX_VISIBLE_RESULTS;
   }
   fontIndex = [];
-  onOpen() {
-    super.onOpen();
-    this.loadFonts().catch(() => {
+  async onOpen() {
+    await super.onOpen();
+    try {
+      await this.loadFonts();
+    } catch {
       this.fontIndex = [];
-    });
+    }
   }
   async loadFonts() {
     const fonts = await this.fontService.getAvailableFonts();

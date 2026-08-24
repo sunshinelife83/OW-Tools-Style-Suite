@@ -75,12 +75,14 @@ export class FontPickerModal extends FuzzySuggestModal<string> {
     this.limit = MAX_VISIBLE_RESULTS;
   }
 
-  public onOpen(): void {
-    super.onOpen();
+  public async onOpen(): Promise<void> {
+    await super.onOpen();
     // Font enumeration is async; refresh the suggestion list once loaded.
-    this.loadFonts().catch(() => {
+    try {
+      await this.loadFonts();
+    } catch {
       this.fontIndex = [];
-    });
+    }
   }
 
   private async loadFonts(): Promise<void> {
