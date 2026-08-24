@@ -63,6 +63,18 @@ describe('InlineStyleDecorations Micro-Syntax & Navigation Protection', () => {
     }
   });
 
+  it('uses native semantic elements for inline formatting decorations', () => {
+    const doc = '<u>العربية</u> <s>نص مشطوب</s>';
+    const { view, container } = createTestView(doc);
+
+    try {
+      expect(container.querySelector('u.rich-editor-inline-underline')?.textContent).toBe('العربية');
+      expect(container.querySelector('s.rich-editor-inline-strikethrough')?.textContent).toBe('نص مشطوب');
+    } finally {
+      view.destroy();
+    }
+  });
+
   it('keeps mouse or programmatic selection endpoints out of hidden markup', () => {
     const doc = '<span style="font-family: Amiri"><b>حصن</b></span>';
     const { view } = createTestView(doc);

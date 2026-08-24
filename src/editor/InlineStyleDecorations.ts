@@ -49,6 +49,13 @@ const SEMANTIC_FORMAT_BY_TAG: Record<string, SemanticFormat> = {
   del: 'strikethrough',
 };
 
+const SEMANTIC_TAG_BY_FORMAT: Record<SemanticFormat, 'strong' | 'em' | 'u' | 's'> = {
+  bold: 'strong',
+  italic: 'em',
+  underline: 'u',
+  strikethrough: 's',
+};
+
 class InlineStyleDecorationValue implements PluginValue {
   public decorations: DecorationSet;
   private destroyed = false;
@@ -144,7 +151,7 @@ class InlineStyleDecorationValue implements PluginValue {
           if (isHighlight) {
             // Keep the highlight inline. An inline-block around an entire RTL
             // line becomes a bidi box and can change paragraph alignment.
-            css += '; vertical-align: baseline !important; line-height: inherit !important; border-radius: var(--rich-editor-highlight-radius, 6px); padding: 0.12em 0.42em; margin: 0 0.08em; -webkit-box-decoration-break: clone; box-decoration-break: clone;';
+            css += '; vertical-align: baseline !important; line-height: inherit !important; border-radius: var(--rich-editor-highlight-radius, 6px); padding: 0.12em 0.42em; margin: 0 0.08em;';
           }
           ranges.push(
             Decoration.mark({
@@ -165,6 +172,7 @@ class InlineStyleDecorationValue implements PluginValue {
         ranges.push(
           Decoration.mark({
             class: `rich-editor-inline-format rich-editor-inline-${mark.format}`,
+            tagName: SEMANTIC_TAG_BY_FORMAT[mark.format],
           }).range(from, to)
         );
       }

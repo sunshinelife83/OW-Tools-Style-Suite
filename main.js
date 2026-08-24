@@ -496,6 +496,12 @@ var SEMANTIC_FORMAT_BY_TAG = {
   strike: "strikethrough",
   del: "strikethrough"
 };
+var SEMANTIC_TAG_BY_FORMAT = {
+  bold: "strong",
+  italic: "em",
+  underline: "u",
+  strikethrough: "s"
+};
 var InlineStyleDecorationValue = class {
   constructor(view, deps) {
     this.view = view;
@@ -573,7 +579,7 @@ var InlineStyleDecorationValue = class {
         if (openEnd < close) {
           let css = inlineTypographyToEditorCss(region.typography);
           if (isHighlight) {
-            css += "; vertical-align: baseline !important; line-height: inherit !important; border-radius: var(--rich-editor-highlight-radius, 6px); padding: 0.12em 0.42em; margin: 0 0.08em; -webkit-box-decoration-break: clone; box-decoration-break: clone;";
+            css += "; vertical-align: baseline !important; line-height: inherit !important; border-radius: var(--rich-editor-highlight-radius, 6px); padding: 0.12em 0.42em; margin: 0 0.08em;";
           }
           ranges.push(
             import_view2.Decoration.mark({
@@ -589,7 +595,8 @@ var InlineStyleDecorationValue = class {
         if (from >= to) continue;
         ranges.push(
           import_view2.Decoration.mark({
-            class: `rich-editor-inline-format rich-editor-inline-${mark.format}`
+            class: `rich-editor-inline-format rich-editor-inline-${mark.format}`,
+            tagName: SEMANTIC_TAG_BY_FORMAT[mark.format]
           }).range(from, to)
         );
       }
